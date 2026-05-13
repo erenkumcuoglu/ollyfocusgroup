@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olly Focus Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0b0c0e;
+  --surface:  #111318;
+  --border:   #1e2028;
+  --border2:  #2a2d38;
+  --text:     #c8cdd8;
+  --muted:    #545870;
+  --accent:   #4f9cf9;
+  --accent2:  #a78bfa;
+  --green:    #34d399;
+  --yellow:   #fbbf24;
+  --red:      #f87171;
+  --font-mono:"JetBrains Mono", monospace;
+  --font-ui:  "Syne", sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+button { cursor: pointer; font-family: var(--font-mono); }
+input, select, textarea {
+  font-family: var(--font-mono);
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+/* HEADER */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky; top: 0;
+  background: var(--bg);
+  z-index: 100;
+}
+.logo { font-family: var(--font-ui); font-weight: 800; font-size: 18px; letter-spacing: -0.5px; color: #fff; }
+.logo span { color: var(--accent); }
+.badge { font-size: 10px; padding: 2px 7px; border-radius: 99px; background: var(--border2); color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.badge.mock { background: #2d2200; color: var(--yellow); }
+.badge.live { background: #0d2418; color: var(--green); }
+nav { margin-left: auto; display: flex; gap: 4px; }
+.nav-btn { background: none; border: none; color: var(--muted); padding: 6px 14px; font-size: 12px; font-family: var(--font-ui); font-weight: 600; letter-spacing: 0.5px; border-radius: 4px; transition: color .15s, background .15s; }
+.nav-btn:hover, .nav-btn.active { color: var(--text); background: var(--border); }
+.nav-btn.active { color: #fff; }
+
+/* LAYOUT */
+.main { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
+aside { border-right: 1px solid var(--border); padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; max-height: calc(100vh - 49px); }
+.section-label { font-size: 10px; font-family: var(--font-ui); font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 4px; margin-bottom: 6px; }
+
+/* PERSONA LIST */
+.persona-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 5px; cursor: pointer; transition: background .12s; user-select: none; }
+.persona-item:hover { background: var(--surface); }
+.persona-item.checked { background: #131b2e; }
+.persona-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
+.persona-item.checked .persona-dot { background: var(--accent); }
+.persona-name { font-size: 12px; flex: 1; line-height: 1.3; }
+.persona-group { font-size: 10px; color: var(--muted); }
+
+/* BUTTONS */
+.run-btn { width: 100%; padding: 11px; border: none; border-radius: 5px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; font-family: var(--font-ui); letter-spacing: 0.5px; transition: opacity .15s, transform .1s; }
+.run-btn:hover:not(:disabled) { opacity: .88; }
+.run-btn:active:not(:disabled) { transform: scale(.98); }
+.run-btn:disabled { opacity: .4; cursor: default; }
+.sched-btn { padding: 6px 10px; border: 1px solid var(--border2); border-radius: 4px; background: none; color: var(--text); font-size: 12px; transition: border-color .15s; }
+.sched-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sched-btn.active { border-color: var(--green); color: var(--green); }
+.sched-status { font-size: 11px; color: var(--muted); padding: 0 4px; }
+
+/* SCHEDULER ROW */
+.scheduler-row { display: flex; gap: 6px; align-items: center; }
+.scheduler-row select { flex: 1; }
+.scheduler-row input  { width: 68px; }
+
+/* CONTENT */
+.content { display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 49px); }
+.tab-panels { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.tab-panel  { display: none; flex: 1; overflow-y: auto; padding: 24px 28px; }
+.tab-panel.active { display: flex; flex-direction: column; gap: 20px; }
+
+/* LOG */
+.log-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.log-toolbar { padding: 8px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.log-title { font-size: 11px; color: var(--muted); font-family: var(--font-ui); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.log-clear { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 3px; transition: color .15s; }
+.log-clear:hover { color: var(--text); }
+.log-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.6; }
+.log-entry { display: flex; gap: 10px; align-items: flex-start; }
+.log-time { color: var(--muted); flex-shrink: 0; font-size: 11px; padding-top: 2px; }
+.log-tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; flex-shrink: 0; font-family: var(--font-ui); letter-spacing: 0.5px; margin-top: 1px; }
+.tag-start  { background: #1a2b1a; color: var(--green); }
+.tag-user   { background: #1a2028; color: var(--accent); }
+.tag-olly   { background: #1f1a2a; color: var(--accent2); }
+.tag-score  { background: #221a10; color: var(--yellow); }
+.tag-done   { background: #0d2418; color: var(--green); }
+.tag-error  { background: #2a1212; color: var(--red); }
+.tag-info   { background: var(--border); color: var(--muted); }
+.log-msg { flex: 1; word-break: break-word; }
+
+/* SCORE */
+.score-pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; font-family: var(--font-ui); }
+.score-green  { background: #0d2418; color: var(--green); }
+.score-yellow { background: #221a10; color: var(--yellow); }
+.score-red    { background: #2a1212; color: var(--red); }
+
+/* PROGRESS */
+.run-progress { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.run-progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .3s; }
+
+/* CARDS */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+.card-label { font-size: 10px; color: var(--muted); font-family: var(--font-ui); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+.card-value { font-size: 26px; font-family: var(--font-ui); font-weight: 800; color: #fff; }
+.card-value.green  { color: var(--green); }
+.card-value.yellow { color: var(--yellow); }
+.card-value.red    { color: var(--red); }
+
+/* RESULT TABLE */
+.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result-table th { text-align: left; padding: 8px 12px; font-family: var(--font-ui); font-weight: 600; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.result-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.result-table tr:last-child td { border-bottom: none; }
+.result-table tr:hover td { background: var(--surface); }
+.step-flow { display: flex; gap: 4px; flex-wrap: wrap; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* PROBLEM TABLE */
+.prob-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.prob-table th { text-align: left; padding: 7px 10px; font-family: var(--font-ui); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.prob-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+.prob-table td:first-child { color: var(--text); }
+
+/* REPORTS */
+.reports-list { display: flex; flex-direction: column; gap: 8px; }
+.report-row { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto auto auto auto auto; align-items: center; gap: 16px; cursor: pointer; transition: border-color .15s; }
+.report-row:hover { border-color: var(--border2); }
+.report-row.selected { border-color: var(--accent); background: #131b2e; }
+.report-filename { font-size: 12px; color: var(--text); }
+.report-ts { font-size: 11px; color: var(--muted); }
+.compare-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+.compare-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-bottom: 16px; }
+.compare-grid select { width: 100%; }
+.compare-vs { color: var(--muted); font-size: 12px; text-align: center; }
+.diff-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.diff-table th { text-align: left; padding: 7px 12px; font-family: var(--font-ui); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.diff-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.delta-pos { color: var(--green); }
+.delta-neg { color: var(--red); }
+.delta-neu { color: var(--muted); }
+
+/* PERSONAS TAB */
+.persona-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.persona-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.persona-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.persona-card-name { font-family: var(--font-ui); font-weight: 600; font-size: 13px; color: #fff; }
+.persona-card-actions { display: flex; gap: 6px; }
+.icon-btn { background: none; border: 1px solid var(--border2); border-radius: 3px; color: var(--muted); padding: 3px 8px; font-size: 11px; transition: color .15s, border-color .15s; }
+.icon-btn:hover { color: var(--text); border-color: var(--text); }
+.icon-btn.danger:hover { color: var(--red); border-color: var(--red); }
+.persona-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta-tag { font-size: 10px; padding: 2px 7px; border-radius: 3px; background: var(--border); color: var(--muted); font-family: var(--font-ui); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.meta-tag.lang-en { background: #1a2028; color: var(--accent); }
+.meta-tag.lang-tr { background: #1f1a2a; color: var(--accent2); }
+.meta-tag.gt-yes  { background: #0d2418; color: var(--green); }
+.meta-tag.gt-no   { background: #221212; color: var(--red); }
+.add-persona-btn { width: 100%; padding: 10px; border: 1px dashed var(--border2); border-radius: 5px; background: none; color: var(--muted); font-size: 12px; transition: border-color .15s, color .15s; }
+.add-persona-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* IMPORT ZONE */
+.import-zone { border: 1px dashed var(--border2); border-radius: 6px; padding: 20px; text-align: center; cursor: pointer; transition: border-color .15s; }
+.import-zone:hover { border-color: var(--accent); }
+.import-zone.drag-over { border-color: var(--accent); background: #131b2e; }
+.import-zone p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+#importFileInput { display: none; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 24px; width: 560px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.modal-title { font-family: var(--font-ui); font-weight: 800; font-size: 16px; color: #fff; }
+.form-row { display: flex; flex-direction: column; gap: 6px; }
+.form-row label { font-size: 11px; color: var(--muted); font-family: var(--font-ui); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; }
+.form-row textarea { resize: vertical; min-height: 80px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-primary { padding: 8px 18px; background: var(--accent); border: none; border-radius: 4px; color: #fff; font-size: 12px; font-family: var(--font-ui); font-weight: 600; }
+.btn-secondary { padding: 8px 18px; background: none; border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-size: 12px; font-family: var(--font-ui); }
+.btn-primary:hover { opacity: .88; }
+.btn-secondary:hover { border-color: var(--text); }
+
+/* IMPORT RESULT TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border2); border-radius: 6px; padding: 12px 18px; font-size: 12px; z-index: 300; display: none; max-width: 320px; }
+.toast.show { display: block; }
+.toast.success { border-color: var(--green); }
+.toast.error   { border-color: var(--red); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">olly<span>.</span>focus</div>
+  <span class="badge mock" id="modeBadge">MOCK</span>
+  <nav>
+    <button class="nav-btn active" id="nav-live"     onclick="switchTab('live',    this)">Live Run</button>
+    <button class="nav-btn"        id="nav-reports"  onclick="switchTab('reports', this)">Reports</button>
+    <button class="nav-btn"        id="nav-personas" onclick="switchTab('personas',this)">Personas</button>
+  </nav>
+</header>
+
+<div class="main">
+  <aside>
+    <div>
+      <div class="section-label">Personalar</div>
+      <div id="personaList"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:6px">
+        <button class="sched-btn" id="btnAll"  onclick="selectAll(true)">Tümü</button>
+        <button class="sched-btn" id="btnNone" onclick="selectAll(false)">Hiçbiri</button>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="startRun()">▶ Testi Başlat</button>
+    </div>
+
+    <div>
+      <div class="section-label">Scheduler</div>
+      <div class="scheduler-row">
+        <select id="schedDay">
+          <option value="daily">Her gün</option>
+          <option value="monday" selected>Pazartesi</option>
+          <option value="tuesday">Salı</option>
+          <option value="wednesday">Çarşamba</option>
+          <option value="thursday">Perşembe</option>
+          <option value="friday">Cuma</option>
+          <option value="saturday">Cumartesi</option>
+          <option value="sunday">Pazar</option>
+        </select>
+        <input type="time" id="schedTime" value="09:00">
+        <button class="sched-btn" id="schedBtn" onclick="toggleSchedule()">Set</button>
+      </div>
+      <div class="sched-status" id="schedStatus">Scheduler pasif</div>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="tab-panels">
+
+      <!-- LIVE RUN -->
+      <div class="tab-panel active" id="tab-live">
+        <div class="run-progress"><div class="run-progress-bar" id="progressBar"></div></div>
+
+        <div id="summaryCards" style="display:none">
+          <div class="cards" id="cardsRow"></div>
+        </div>
+
+        <div id="resultTableWrap" style="display:none">
+          <div class="section-label" style="margin-bottom:8px">Persona Sonuçları</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Persona</th><th>Grup</th><th>Overall</th>
+                  <th>Retention</th><th>Adım Ort.</th><th>Adım Akışı</th><th>Durum</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="problemWrap" style="display:none">
+          <div class="section-label" style="margin-bottom:8px">⚠ Düşük Skorlu Adımlar</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <table class="prob-table">
+              <thead><tr><th>Persona</th><th>Adım</th><th>Skor</th><th>Action</th><th>Memory</th><th>Intent</th></tr></thead>
+              <tbody id="problemBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="log-wrap" style="min-height:280px">
+          <div class="log-toolbar">
+            <span class="log-title">Live Log</span>
+            <button class="log-clear" onclick="clearLog()">Temizle</button>
+          </div>
+          <div class="log-body" id="logBody">
+            <div class="log-entry">
+              <span class="log-time">--:--:--</span>
+              <span class="log-tag tag-info">INFO</span>
+              <span class="log-msg">Hazır. Sol panelden personaları seç ve testi başlat.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div class="tab-panel" id="tab-reports">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:4px">
+          <div class="section-label" style="margin:0">Geçmiş Raporlar</div>
+          <button class="sched-btn" onclick="loadReports()" style="margin-left:auto">↻ Yenile</button>
+        </div>
+        <div class="reports-list" id="reportsList"></div>
+
+        <div class="compare-panel">
+          <div class="section-label" style="margin-bottom:12px">Karşılaştır</div>
+          <div class="compare-grid">
+            <select id="compareA"><option value="">— Rapor A —</option></select>
+            <span class="compare-vs">vs</span>
+            <select id="compareB"><option value="">— Rapor B —</option></select>
+          </div>
+          <button class="btn-primary" onclick="runCompare()" style="margin-bottom:16px">Karşılaştır</button>
+          <div id="compareResult"></div>
+        </div>
+      </div>
+
+      <!-- PERSONAS -->
+      <div class="tab-panel" id="tab-personas">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="section-label" style="margin:0">Persona Yönetimi</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" onclick="document.getElementById('importFileInput').click()">
+              ↑ personas.py İçe Aktar
+            </button>
+            <input type="file" id="importFileInput" accept=".py" onchange="importPersonasFile(this)">
+            <button class="btn-primary" onclick="openPersonaModal(null)">+ Persona Ekle</button>
+          </div>
+        </div>
+
+        <!-- Import zone (drag&drop) -->
+        <div class="import-zone" id="importZone"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+          onclick="document.getElementById('importFileInput').click()">
+          <div style="font-size:22px">📂</div>
+          <p>personas.py dosyasını buraya sürükle veya tıkla</p>
+          <p style="font-size:11px;margin-top:4px">PERSONAS ve GROUND_TRUTH dict'leri otomatik aktarılır</p>
+        </div>
+
+        <div class="persona-grid" id="personaGrid"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PERSONA MODAL -->
+<div class="modal-overlay" id="personaModal" onclick="handleModalClick(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Yeni Persona</div>
+    <div class="form-row-2">
+      <div class="form-row"><label>ID</label><input id="p_id" placeholder="emre_2"></div>
+      <div class="form-row"><label>Görünen Ad</label><input id="p_name" placeholder="Emre (22, İstanbul)"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row">
+        <label>Grup</label>
+        <select id="p_group">
+          <option>university_male</option><option>university_female</option>
+          <option>midcareer_male</option><option>midcareer_female</option>
+          <option>executive_male</option><option>executive_female</option>
+          <option>edge_reserved</option><option>edge_oversharer</option>
+          <option>english_male</option><option>english_female</option>
+          <option>custom</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Dil</label>
+        <select id="p_lang"><option value="tr">Türkçe</option><option value="en">English</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Max Adım</label>
+      <input id="p_steps" type="number" value="10" min="3" max="20">
+    </div>
+    <div class="form-row">
+      <label>Sistem Promptu</label>
+      <textarea id="p_prompt" rows="5" placeholder="Sen ... sin. Konuşma tarzın..."></textarea>
+    </div>
+    <div class="form-row">
+      <label>Başlangıç Bağlamı</label>
+      <input id="p_context" placeholder="Olly uygulamasını ilk kez açtın.">
+    </div>
+    <div class="form-row">
+      <label>Senaryo İpuçları (her satır bir adım)</label>
+      <textarea id="p_hints" rows="4" placeholder="Uygulamanın ne olduğunu merak et&#10;Flört konusunu sor"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closePersonaModal()">İptal</button>
+      <button class="btn-primary"   onclick="savePersona()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let personas  = {};
+let selected  = new Set();
+let running   = false;
+let editPersonaId = null;
+let runTotal = 0, runDone = 0;
+
+/* ── INIT ────────────────────────────────────────────────────────── */
+async function init() {
+  await loadPersonas();
+  await checkScheduleStatus();
+  await loadReports();
+}
+
+/* ── TAB ─────────────────────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'reports')  loadReports();
+  if (name === 'personas') renderPersonaGrid();
+}
+
+/* ── PERSONAS SIDEBAR ────────────────────────────────────────────── */
+async function loadPersonas() {
+  try {
+    const res  = await fetch(API + '/api/personas');
+    const list = await res.json();
+    personas   = {};
+    list.forEach(p => {
+      personas[p.id] = p;
+      selected.add(p.id);
+    });
+    renderSidebarList();
+    renderPersonaGrid();
+  } catch(e) {
+    addLog('error', 'Persona listesi alınamadı: ' + e.message);
+  }
+}
+
+function renderSidebarList() {
+  const container = document.getElementById('personaList');
+  container.innerHTML = '';
+  Object.values(personas).forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'persona-item' + (selected.has(p.id) ? ' checked' : '');
+    item.dataset.id = p.id;
+    item.innerHTML = `
+      <div class="persona-dot"></div>
+      <div>
+        <div class="persona-name">${escHtml(p.display_name)}</div>
+        <div class="persona-group">${escHtml(p.group)}</div>
+      </div>`;
+    item.addEventListener('click', () => togglePersona(p.id));
+    container.appendChild(item);
+  });
+}
+
+function togglePersona(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  renderSidebarList();
+}
+
+function selectAll(val) {
+  if (val) Object.keys(personas).forEach(id => selected.add(id));
+  else selected.clear();
+  renderSidebarList();
+}
+
+/* ── RUN ─────────────────────────────────────────────────────────── */
+async function startRun() {
+  if (running) return;
+  if (selected.size === 0) {
+    showToast('En az bir persona seç.', 'error'); return;
+  }
+
+  running  = true;
+  runTotal = selected.size;
+  runDone  = 0;
+
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '⏳ Çalışıyor...';
+  btn.disabled    = true;
+
+  document.getElementById('summaryCards').style.display    = 'none';
+  document.getElementById('resultTableWrap').style.display = 'none';
+  document.getElementById('problemWrap').style.display     = 'none';
+  document.getElementById('resultTableBody').innerHTML     = '';
+  document.getElementById('progressBar').style.width      = '0%';
+  clearLog();
+
+  // Live Run sekmesine geç
+  switchTab('live', document.getElementById('nav-live'));
+
+  // 1. POST /api/run
+  let runId;
+  try {
+    const res  = await fetch(API + '/api/run', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ persona_ids: [...selected] }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || JSON.stringify(err));
+    }
+    const data = await res.json();
+    runId = data.run_id;
+  } catch(e) {
+    addLog('error', 'Run başlatılamadı: ' + e.message);
+    resetRunBtn(); return;
+  }
+
+  // 2. SSE stream
+  const es = new EventSource(API + '/api/run/' + runId + '/stream');
+
+  es.addEventListener('run_start', e => {
+    const d = JSON.parse(e.data);
+    addLog('info', `▶ Koşu başladı — ${d.total} persona — mod: ${d.mock_mode ? 'MOCK' : 'LIVE'}`);
+    const badge = document.getElementById('modeBadge');
+    badge.textContent = d.mock_mode ? 'MOCK' : 'LIVE';
+    badge.className   = 'badge ' + (d.mock_mode ? 'mock' : 'live');
+  });
+
+  es.addEventListener('persona_start', e => {
+    const d = JSON.parse(e.data);
+    addLog('start', `[${d.index}/${d.total}] ${escHtml(d.display_name)}`);
+  });
+
+  es.addEventListener('step_user', e => {
+    const d = JSON.parse(e.data);
+    addLog('user', `[${d.step}] 👤 ${escHtml(truncate(d.message, 100))}`);
+  });
+
+  es.addEventListener('step_olly', e => {
+    const d  = JSON.parse(e.data);
+    const sc = d.step_score;
+    addLog('olly',
+      `[${d.step}] 🤖 <b>${escHtml(d.action)}</b> — ${escHtml(truncate(d.text, 80))} ${scorePill(sc)}`);
+    if (sc < 5) {
+      addLog('score',
+        `&nbsp;&nbsp;&nbsp;&nbsp;↳ Action:${d.scores.action} Memory:${d.scores.memory} `+
+        `Intent:${d.scores.intent} Safety:${d.scores.tone_safety}`);
+    }
+  });
+
+  es.addEventListener('persona_done', e => {
+    const d = JSON.parse(e.data);
+    runDone++;
+    updateProgressBar(runDone / runTotal * 100);
+    addResultRow(d);
+    document.getElementById('resultTableWrap').style.display = 'block';
+    addLog('done',
+      `✓ ${escHtml(d.display_name)} — overall: ${scorePill(d.overall_score)} `+
+      `retention: ${scorePill(d.retention_score)}`);
+  });
+
+  es.addEventListener('run_done', e => {
+    const d = JSON.parse(e.data);
+    renderSummaryCards(d.summary);
+    renderProblemSteps(d.problem_steps);
+    addLog('info', `✅ Tamamlandı — rapor: ${escHtml(d.report_file)}`);
+    updateProgressBar(100);
+    loadReports();
+    es.close();
+    resetRunBtn();
+  });
+
+  es.addEventListener('error_event', e => {
+    try { const d = JSON.parse(e.data); addLog('error', `Hata: ${d.error}`); }
+    catch { /* silent */ }
+  });
+
+  es.addEventListener('done', () => { es.close(); resetRunBtn(); });
+
+  es.onerror = () => {
+    if (es.readyState === EventSource.CLOSED) {
+      resetRunBtn();
+    }
+  };
+}
+
+function resetRunBtn() {
+  running = false;
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '▶ Testi Başlat';
+  btn.disabled    = false;
+}
+
+function updateProgressBar(pct) {
+  document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+}
+
+/* ── LOG ─────────────────────────────────────────────────────────── */
+function addLog(type, msg) {
+  const body = document.getElementById('logBody');
+  const now  = new Date().toLocaleTimeString('tr-TR');
+  const tagMap = {
+    start:'tag-start', user:'tag-user', olly:'tag-olly',
+    score:'tag-score', done:'tag-done', error:'tag-error', info:'tag-info'
+  };
+  const labelMap = {
+    start:'PERSONA', user:'USER', olly:'OLLY',
+    score:'SCORE', done:'DONE', error:'ERR', info:'INFO'
+  };
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML =
+    `<span class="log-time">${now}</span>` +
+    `<span class="log-tag ${tagMap[type]||'tag-info'}">${labelMap[type]||type.toUpperCase()}</span>` +
+    `<span class="log-msg">${msg}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logBody').innerHTML = '';
+}
+
+/* ── RESULT TABLE ────────────────────────────────────────────────── */
+function addResultRow(d) {
+  const tbody = document.getElementById('resultTableBody');
+  const p = personas[d.persona_id] || {};
+  const dots = Array.from({length: d.total_steps}, (_, i) =>
+    `<div class="step-dot" style="background:${scoreColor(d.avg_step_score)}"></div>`
+  ).join('');
+
+  const ret = d.retention_score;
+  const status = ret >= 8
+    ? '<span style="color:var(--green)">🟢 SAĞLIKLI</span>'
+    : ret >= 5
+    ? '<span style="color:var(--yellow)">🟡 İYİLEŞTİRME</span>'
+    : '<span style="color:var(--red)">🔴 KRİTİK</span>';
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${escHtml(d.display_name)}</td>
+    <td style="color:var(--muted)">${escHtml(p.group||'')}</td>
+    <td>${scorePill(d.overall_score)}</td>
+    <td>${scorePill(d.retention_score)}</td>
+    <td>${scorePill(d.avg_step_score)}</td>
+    <td><div class="step-flow">${dots}</div></td>
+    <td>${status}</td>`;
+  tbody.appendChild(tr);
+}
+
+/* ── SUMMARY CARDS ───────────────────────────────────────────────── */
+function renderSummaryCards(s) {
+  document.getElementById('summaryCards').style.display = 'block';
+  document.getElementById('cardsRow').innerHTML = [
+    { label:'Genel Skor',    value: s.avg_overall_score + '/10',   color: scoreClass(s.avg_overall_score) },
+    { label:'Retention',     value: s.avg_retention_score + '/10', color: scoreClass(s.avg_retention_score) },
+    { label:'🟢 Sağlıklı',   value: s.healthy_count,    color: 'green' },
+    { label:'🟡 İyileştirme',value: s.improvement_count,color: 'yellow' },
+    { label:'🔴 Kritik',     value: s.critical_count,   color: s.critical_count > 0 ? 'red' : '' },
+    { label:'Test Edilen',   value: s.total_personas,   color: '' },
+  ].map(c => `
+    <div class="card">
+      <div class="card-label">${c.label}</div>
+      <div class="card-value ${c.color}">${c.value}</div>
+    </div>`).join('');
+}
+
+function renderProblemSteps(problems) {
+  if (!problems || !problems.length) return;
+  document.getElementById('problemWrap').style.display = 'block';
+  document.getElementById('problemBody').innerHTML = problems.map(p => `
+    <tr>
+      <td>${escHtml(p.persona)}</td>
+      <td style="color:var(--muted)">${p.step}</td>
+      <td>${scorePill(p.score)}</td>
+      <td>${escHtml(p.action_note||'—')}</td>
+      <td>${escHtml(p.memory_note||'—')}</td>
+      <td>${escHtml(p.intent_note||'—')}</td>
+    </tr>`).join('');
+}
+
+/* ── REPORTS ─────────────────────────────────────────────────────── */
+async function loadReports() {
+  try {
+    const res  = await fetch(API + '/api/reports');
+    const list = await res.json();
+
+    document.getElementById('reportsList').innerHTML = list.length === 0
+      ? '<div style="color:var(--muted);font-size:12px;padding:12px">Henüz rapor yok.</div>'
+      : list.map(r => `
+        <div class="report-row" onclick="this.classList.toggle('selected')">
+          <div>
+            <div class="report-filename">${escHtml(r.filename)}</div>
+            <div class="report-ts">${escHtml(r.timestamp)}${r.mock_mode ? ' · MOCK' : ''}</div>
+          </div>
+          <div>${scorePill(r.avg_overall_score)}</div>
+          <div style="font-size:11px;color:var(--muted)">${r.avg_retention}/10 ret</div>
+          <div style="font-size:11px;color:var(--green)">🟢 ${r.healthy_count}</div>
+          <div style="font-size:11px;color:var(--yellow)">🟡 ${r.improvement_count}</div>
+          <div style="font-size:11px;color:${r.critical_count>0?'var(--red)':'var(--muted)'}">🔴 ${r.critical_count}</div>
+        </div>`).join('');
+
+    const opts = list.map(r =>
+      `<option value="${escHtml(r.filename)}">${escHtml(r.filename)} (${escHtml(r.timestamp)})</option>`
+    ).join('');
+    document.getElementById('compareA').innerHTML = '<option value="">— Rapor A —</option>' + opts;
+    document.getElementById('compareB').innerHTML = '<option value="">— Rapor B —</option>' + opts;
+  } catch(e) { /* silent on reports tab not yet visible */ }
+}
+
+async function runCompare() {
+  const a = document.getElementById('compareA').value;
+  const b = document.getElementById('compareB').value;
+  if (!a || !b || a === b) {
+    document.getElementById('compareResult').innerHTML =
+      '<div style="color:var(--red);font-size:12px">İki farklı rapor seçin.</div>';
+    return;
+  }
+  const res  = await fetch(API + `/api/reports/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  const data = await res.json();
+  document.getElementById('compareResult').innerHTML = `
+    <table class="diff-table">
+      <thead><tr>
+        <th>Persona</th>
+        <th>Overall A</th><th>Overall B</th><th>Δ</th>
+        <th>Retention A</th><th>Retention B</th><th>Δ</th>
+      </tr></thead>
+      <tbody>${data.diff.map(d => `<tr>
+        <td>${escHtml(d.persona)}</td>
+        <td>${d.overall_a??'—'}</td><td>${d.overall_b??'—'}</td>
+        <td>${deltaStr(d.overall_delta)}</td>
+        <td>${d.retention_a??'—'}</td><td>${d.retention_b??'—'}</td>
+        <td>${deltaStr(d.retention_delta)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function deltaStr(v) {
+  if (v === null || v === undefined) return '<span class="delta-neu">—</span>';
+  if (v > 0)  return `<span class="delta-pos">+${v}</span>`;
+  if (v < 0)  return `<span class="delta-neg">${v}</span>`;
+  return `<span class="delta-neu">0</span>`;
+}
+
+/* ── PERSONA GRID ────────────────────────────────────────────────── */
+function renderPersonaGrid() {
+  document.getElementById('personaGrid').innerHTML =
+    Object.values(personas).map(p => `
+      <div class="persona-card">
+        <div class="persona-card-header">
+          <div class="persona-card-name">${escHtml(p.display_name)}</div>
+          <div class="persona-card-actions">
+            <button class="icon-btn"        data-edit="${escHtml(p.id)}"   onclick="openPersonaModal(this.dataset.edit)">Düzenle</button>
+            <button class="icon-btn danger" data-del="${escHtml(p.id)}"    onclick="deletePersona(this.dataset.del)">Sil</button>
+          </div>
+        </div>
+        <div class="persona-meta">
+          <span class="meta-tag lang-${p.language}">${p.language.toUpperCase()}</span>
+          <span class="meta-tag">${escHtml(p.group)}</span>
+          <span class="meta-tag">${p.max_steps} adım</span>
+          <span class="meta-tag ${p.has_ground_truth ? 'gt-yes' : 'gt-no'}">
+            ${p.has_ground_truth ? 'GT ✓' : 'GT ✗'}
+          </span>
+        </div>
+      </div>`).join('') +
+    `<button class="add-persona-btn" onclick="openPersonaModal(null)">+ Yeni Persona Ekle</button>`;
+}
+
+/* ── PERSONA MODAL ───────────────────────────────────────────────── */
+function openPersonaModal(id) {
+  editPersonaId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Persona Düzenle' : 'Yeni Persona';
+  const idInput = document.getElementById('p_id');
+
+  if (id && personas[id]) {
+    const p = personas[id];
+    idInput.value    = p.id;
+    idInput.disabled = true;
+    document.getElementById('p_name').value  = p.display_name;
+    document.getElementById('p_group').value = p.group;
+    document.getElementById('p_lang').value  = p.language;
+    document.getElementById('p_steps').value = p.max_steps;
+    // fetch full data for prompt/hints
+    fetch(API + '/api/personas/' + encodeURIComponent(id))
+      .then(r => r.json())
+      .then(full => {
+        document.getElementById('p_prompt').value  = full.system_prompt    || '';
+        document.getElementById('p_context').value = full.initial_context  || '';
+        document.getElementById('p_hints').value   = (full.scenario_hints || []).join('\n');
+      });
+  } else {
+    idInput.value    = '';
+    idInput.disabled = false;
+    document.getElementById('p_name').value    = '';
+    document.getElementById('p_group').value   = 'university_male';
+    document.getElementById('p_lang').value    = 'tr';
+    document.getElementById('p_steps').value   = 10;
+    document.getElementById('p_prompt').value  = '';
+    document.getElementById('p_context').value = '';
+    document.getElementById('p_hints').value   = '';
+  }
+  document.getElementById('personaModal').classList.add('open');
+}
+
+function closePersonaModal() {
+  document.getElementById('personaModal').classList.remove('open');
+  editPersonaId = null;
+}
+
+function handleModalClick(e) {
+  if (e.target === document.getElementById('personaModal')) closePersonaModal();
+}
+
+async function savePersona() {
+  const pid = document.getElementById('p_id').value.trim();
+  const sys = document.getElementById('p_prompt').value.trim();
+  if (!pid) { showToast('ID zorunlu.', 'error'); return; }
+  if (!sys)  { showToast('Sistem Promptu zorunlu.', 'error'); return; }
+
+  const payload = {
+    id:              pid,
+    display_name:    document.getElementById('p_name').value.trim(),
+    group:           document.getElementById('p_group').value,
+    language:        document.getElementById('p_lang').value,
+    max_steps:       parseInt(document.getElementById('p_steps').value) || 10,
+    system_prompt:   sys,
+    initial_context: document.getElementById('p_context').value.trim(),
+    scenario_hints:  document.getElementById('p_hints').value
+                       .split('\n').map(s => s.trim()).filter(Boolean),
+    ground_truth:    [],
+  };
+
+  const method  = editPersonaId ? 'PUT'  : 'POST';
+  const url     = editPersonaId
+    ? API + '/api/personas/' + encodeURIComponent(editPersonaId)
+    : API + '/api/personas';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.ok) {
+    closePersonaModal();
+    showToast(editPersonaId ? 'Persona güncellendi.' : 'Persona eklendi.', 'success');
+    await loadPersonas();
+    renderPersonaGrid();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    showToast('Hata: ' + (err.detail || JSON.stringify(err)), 'error');
+  }
+}
+
+async function deletePersona(id) {
+  if (!confirm(`"${id}" personasını silmek istediğinizden emin misiniz?`)) return;
+  const res = await fetch(API + '/api/personas/' + encodeURIComponent(id), { method: 'DELETE' });
+  if (res.ok) {
+    selected.delete(id);
+    showToast('Persona silindi.', 'success');
+    await loadPersonas();
+    renderPersonaGrid();
+  } else {
+    showToast('Silme hatası.', 'error');
+  }
+}
+
+/* ── IMPORT PERSONAS.PY ──────────────────────────────────────────── */
+async function importPersonasFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  await doImport(file);
+  input.value = '';
+}
+
+async function doImport(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showToast('İçe aktarılıyor...', 'success');
+
+  const res = await fetch(API + '/api/personas/import', {
+    method: 'POST',
+    body:   formData,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (res.ok) {
+    showToast(
+      `✓ ${data.added.length} eklendi, ${data.updated.length} güncellendi. Toplam: ${data.total}`,
+      'success'
+    );
+    await loadPersonas();
+    renderPersonaGrid();
+  } else {
+    showToast('İçe aktarma hatası: ' + (data.detail || 'Bilinmeyen hata'), 'error');
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('importZone').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.py')) doImport(file);
+  else showToast('Sadece .py dosyası kabul edilir.', 'error');
+}
+
+/* ── SCHEDULER ───────────────────────────────────────────────────── */
+async function checkScheduleStatus() {
+  try {
+    const res  = await fetch(API + '/api/schedule/status');
+    const data = await res.json();
+    updateSchedulerUI(data);
+  } catch { /* ignore */ }
+}
+
+function updateSchedulerUI(state) {
+  const btn    = document.getElementById('schedBtn');
+  const status = document.getElementById('schedStatus');
+  if (state.active) {
+    btn.textContent = 'Durdur';
+    btn.classList.add('active');
+    status.textContent = `Aktif: her ${state.day} ${state.time}`;
+  } else {
+    btn.textContent = 'Set';
+    btn.classList.remove('active');
+    status.textContent = 'Scheduler pasif';
+  }
+}
+
+async function toggleSchedule() {
+  const res  = await fetch(API + '/api/schedule/status');
+  const curr = await res.json();
+
+  const payload = curr.active
+    ? { action: 'stop' }
+    : {
+        action: 'set',
+        day:    document.getElementById('schedDay').value,
+        time:   document.getElementById('schedTime').value,
+      };
+
+  const r    = await fetch(API + '/api/schedule', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  const data = await r.json();
+  updateSchedulerUI({
+    active: data.status === 'set',
+    day:    payload.day  || null,
+    time:   payload.time || null,
+  });
+}
+
+/* ── UTILS ───────────────────────────────────────────────────────── */
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function scoreColor(sc) {
+  return sc >= 8 ? 'var(--green)' : sc >= 5 ? 'var(--yellow)' : 'var(--red)';
+}
+function scoreClass(sc) {
+  return sc >= 8 ? 'green' : sc >= 5 ? 'yellow' : 'red';
+}
+function scorePill(sc) {
+  const cls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-yellow' : 'score-red';
+  return `<span class="score-pill ${cls}">${sc}</span>`;
+}
+function truncate(str, n) {
+  return str && str.length > n ? str.slice(0, n) + '…' : (str || '');
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+init();
+</script>
+</body>
+</html>
