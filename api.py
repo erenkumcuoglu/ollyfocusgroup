@@ -37,14 +37,23 @@ _scheduler_task: Optional[asyncio.Task] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HEALTH
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "backend_mode": config.BACKEND_MODE}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # DASHBOARD
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    html_path = Path(__file__).parent / "dashboard.html"
+    html_path = Path(__file__).parent / "Olly Focus Group.html"
     if not html_path.exists():
-        raise HTTPException(404, "dashboard.html bulunamadı")
+        raise HTTPException(404, "Olly Focus Group.html bulunamadı")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
