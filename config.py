@@ -68,9 +68,19 @@ else:
 # ---------------------------------------------------------------------------
 # Raporlama
 # ---------------------------------------------------------------------------
-REPORTS_DIR:       str = os.getenv("REPORTS_DIR",       "reports")
-SLACK_WEBHOOK_URL: str = os.getenv("SLACK_WEBHOOK_URL", "")
-WEBHOOK_URL:       str = os.getenv("WEBHOOK_URL",       "")
+def _clean_url(raw: str) -> str:
+    # python-dotenv inline comment'leri value'ya dahil eder; ilk whitespace'e
+    # kadar olan kısmı al, geçerli http(s) şeması yoksa boş döndür.
+    v = (raw or "").strip()
+    if not v:
+        return ""
+    v = v.split()[0]
+    return v if v.startswith(("http://", "https://")) else ""
+
+
+REPORTS_DIR:       str = os.getenv("REPORTS_DIR", "reports")
+SLACK_WEBHOOK_URL: str = _clean_url(os.getenv("SLACK_WEBHOOK_URL", ""))
+WEBHOOK_URL:       str = _clean_url(os.getenv("WEBHOOK_URL",       ""))
 
 # ---------------------------------------------------------------------------
 # Skorlama eşikleri
