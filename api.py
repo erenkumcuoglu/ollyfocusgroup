@@ -243,11 +243,8 @@ async def _run_with_stream(run_id: str, persona_ids: list[str], q: asyncio.Queue
     all_results = []
 
     for idx, pid in enumerate(persona_ids):
-        persona   = PERSONAS[pid]
-        gt_list   = GROUND_TRUTH.get(pid, [])
-        max_steps = persona.get("max_steps", config.MAX_STEPS_LONG)
-        history:  list = []
-        steps:    list = []
+        persona = PERSONAS[pid]
+        gt_list = GROUND_TRUTH.get(pid, [])
 
         await emit("persona_start", {
             "run_id":       run_id,
@@ -258,35 +255,35 @@ async def _run_with_stream(run_id: str, persona_ids: list[str], q: asyncio.Queue
             "total":        len(persona_ids),
         })
 
-        for step_num in range(1, max_steps + 1):
-            try:
-                user_msg = await test_runner.persona_next_message(persona, history, step_num)
-            except Exception as e:
-                await emit("error", {"persona_id": pid, "step": step_num, "error": str(e)})
-                break
+        # Runner'ın harness/legacy/mock yolunun tamamını tek yerden çalıştır.
+        # Adım-bazlı detaylar uvicorn terminalinde rich console üzerinden
+        # (harness istek logları dahil) görünür; SSE event'leri persona
+        # tamamlandıktan sonra geçmişten yeniden oynatılır.
+        try:
+            result = await test_runner.run_test(pid)
+        except Exception as e:
+            await emit("error", {
+                "persona_id": pid,
+                "error": f"{type(e).__name__}: {e}",
+            })
+            continue
+
+        for s in result.get("steps", []):
+            step_num    = s["step"]
+            olly_out    = s["olly_output"]
+            eval_result = s["eval"]
+            gt_step     = next((g for g in gt_list if g["step"] == step_num), None)
 
             await emit("step_user", {
                 "run_id": run_id, "persona_id": pid,
-                "step": step_num, "message": user_msg,
+                "step": step_num, "message": s["user_message"],
             })
-
-            try:
-                olly_out = await test_runner.call_olly(user_msg, history, pid)
-            except Exception as e:
-                await emit("error", {"persona_id": pid, "step": step_num, "error": str(e)})
-                break
-
-            olly_action = olly_out.get("response_action", "")
-            olly_text   = olly_out.get("response_text",   "")
-            gt_step     = next((g for g in gt_list if g["step"] == step_num), None)
-            eval_result = test_runner.evaluate_step(olly_out, gt_step)
-
             await emit("step_olly", {
                 "run_id":       run_id,
                 "persona_id":   pid,
                 "step":         step_num,
-                "action":       olly_action,
-                "text":         olly_text,
+                "action":       s["olly_action"],
+                "text":         olly_out.get("response_text", ""),
                 "step_score":   eval_result["step_score"],
                 "scores": {
                     "action":      eval_result["action_score"],
@@ -296,49 +293,25 @@ async def _run_with_stream(run_id: str, persona_ids: list[str], q: asyncio.Queue
                 },
                 "notes":        eval_result["notes"],
                 "ground_truth": gt_step,
+                "latency_ms":   s.get("latency_ms", 0),
             })
 
-            steps.append({
-                "step":         step_num,
-                "user_message": user_msg,
-                "olly_output":  olly_out,
-                "olly_action":  olly_action,
-                "eval":         eval_result,
+        if result.get("error"):
+            await emit("error", {
+                "persona_id": pid,
+                "error":      result["error"],
             })
 
-            history.append({"role": "user",      "content": user_msg})
-            history.append({"role": "assistant", "content": olly_text})
-
-            if olly_action == "close":
-                break
-
-        step_scores = [s["eval"]["step_score"] for s in steps]
-        avg_step    = round(sum(step_scores) / len(step_scores), 1) if step_scores else 0
-        retention   = test_runner.compute_retention(steps, max_steps)
-        overall     = round(avg_step * config.WEIGHT_STEP_AVG + retention * config.WEIGHT_RETENTION, 1)
-
-        persona_result = {
-            "persona_id":      pid,
-            "display_name":    persona["display_name"],
-            "group":           persona["group"],
-            "timestamp":       datetime.datetime.now().isoformat(),
-            "mock_mode":       config.MOCK_MODE,
-            "steps":           steps,
-            "avg_step_score":  avg_step,
-            "retention_score": retention,
-            "overall_score":   overall,
-            "total_steps":     len(steps),
-        }
-        all_results.append(persona_result)
+        all_results.append(result)
 
         await emit("persona_done", {
             "run_id":          run_id,
             "persona_id":      pid,
-            "display_name":    persona["display_name"],
-            "overall_score":   overall,
-            "retention_score": retention,
-            "avg_step_score":  avg_step,
-            "total_steps":     len(steps),
+            "display_name":    result["display_name"],
+            "overall_score":   result["overall_score"],
+            "retention_score": result["retention_score"],
+            "avg_step_score":  result["avg_step_score"],
+            "total_steps":     result["total_steps"],
         })
 
     report      = test_runner.build_report(all_results)

@@ -100,10 +100,25 @@ def _format_history(history: list) -> str:
 # chat-agent-tester API ile konuşan düşük seviyeli istemci
 # ════════════════════════════════════════════════════════════════════════════
 
+import uuid as _uuid
+
+# Process-ömrü boyunca sabit `Bearer` ile agent-key arasındaki ek boşluk
+# sayısı. API Gateway authorizer cache key olarak ham Authorization header
+# değerini kullanıyor; eski narrow-resource Allow entry'leri 5dk TTL'le
+# takılı kalabiliyor. Bu pad cache miss zorlayıp authorizer'ı bir kez
+# tekrar tetikler — fixed wildcard kodu deploy edildiyse yeni kayıt
+# yazılır ve sonraki /test/* çağrıları geçer. Hem authorizer (`/^Bearer
+# \s+(.+)$/`) hem chat-agent-tester (`slice(7).trim()`) parser'ları
+# çoklu boşluğu tolere ettiği için agent-key auth'u bozulmuyor. Trailing
+# whitespace httpx/h11 tarafından reddedilir, bu yüzden boşlukları
+# token'ın ÖNÜNE koyuyoruz.
+_AUTH_CACHE_PAD = " " * (1 + (int(_uuid.uuid4().int) % 32))
+
+
 def _harness_headers() -> dict:
     return {
         "Content-Type":  "application/json",
-        "Authorization": f"Bearer {config.HARNESS_AGENT_KEY}",
+        "Authorization": f"Bearer{_AUTH_CACHE_PAD}{config.HARNESS_AGENT_KEY}",
     }
 
 
@@ -113,25 +128,96 @@ def _harness_url(path: str) -> str:
     return f"{base}/test{path}"
 
 
+def _summarize_payload(payload: dict | None, limit: int = 140) -> str:
+    """İstek gövdesini/parametrelerini tek satıra sıkıştır.
+    Uzun string değerleri (initialMessage, content) kısalt."""
+    if not payload:
+        return "—"
+    shrunk = {}
+    for k, v in payload.items():
+        if isinstance(v, str) and len(v) > 60:
+            shrunk[k] = v[:57] + "…"
+        else:
+            shrunk[k] = v
+    s = json.dumps(shrunk, ensure_ascii=False)
+    return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
 class HarnessClient:
     """
     chat-agent-tester harness için async HTTP istemcisi.
     Her public metot başarı durumunda data dict'i, hata durumunda
     HarnessError fırlatır.
+
+    Her isteği `[HARNESS] METHOD /path  body=...  → status code lat=Xms`
+    formatında konsola loglar.
     """
 
     def __init__(self):
         self._timeout = config.REQUEST_TIMEOUT
 
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: dict | None = None,
+        params: dict | None = None,
+    ) -> dict:
+        url     = _harness_url(path)
+        payload = body if method == "POST" else params
+        started = datetime.datetime.now()
+
+        console.print(
+            f"[dim][HARNESS →] {method:<4} /test{path}  "
+            f"body={_summarize_payload(payload)}[/dim]"
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as c:
+                if method == "POST":
+                    r = await c.post(url, json=body, headers=_harness_headers())
+                else:
+                    r = await c.get(url, params=params, headers=_harness_headers())
+        except Exception as e:
+            lat_ms = int((datetime.datetime.now() - started).total_seconds() * 1000)
+            console.print(
+                f"[red][HARNESS ✗] {method:<4} /test{path}  "
+                f"transport hatası: {type(e).__name__}: {e}  ({lat_ms}ms)[/red]"
+            )
+            raise
+
+        lat_ms = int((datetime.datetime.now() - started).total_seconds() * 1000)
+
+        # Lambda envelope'una bakıp başarı/kod özetini çıkar
+        outcome = f"HTTP {r.status_code}"
+        try:
+            j = r.json()
+            if isinstance(j, dict):
+                if j.get("success") is True:
+                    outcome = f"HTTP {r.status_code} success"
+                elif j.get("success") is False:
+                    err = j.get("error", {})
+                    code = err.get("code", "?") if isinstance(err, dict) else str(err)
+                    outcome = f"HTTP {r.status_code} error={code}"
+                elif "message" in j:
+                    outcome = f"HTTP {r.status_code} gateway={j['message']!r}"
+        except Exception:
+            outcome = f"HTTP {r.status_code} (non-JSON)"
+
+        color = "dim" if r.status_code < 400 else "red"
+        console.print(
+            f"[{color}][HARNESS ←] {method:<4} /test{path}  "
+            f"→ {outcome}  ({lat_ms}ms)[/{color}]"
+        )
+
+        return self._parse(r, path)
+
     async def _post(self, path: str, body: dict) -> dict:
-        async with httpx.AsyncClient(timeout=self._timeout) as c:
-            r = await c.post(_harness_url(path), json=body, headers=_harness_headers())
-            return self._parse(r, path)
+        return await self._request("POST", path, body=body)
 
     async def _get(self, path: str, params: dict | None = None) -> dict:
-        async with httpx.AsyncClient(timeout=self._timeout) as c:
-            r = await c.get(_harness_url(path), params=params, headers=_harness_headers())
-            return self._parse(r, path)
+        return await self._request("GET", path, params=params)
 
     @staticmethod
     def _parse(resp: httpx.Response, path: str) -> dict:
@@ -140,13 +226,32 @@ class HarnessClient:
         except Exception:
             raise HarnessError(path, resp.status_code, "JSON parse hatası", resp.text)
 
-        if not body.get("success"):
-            err  = body.get("error", {})
-            code = err.get("code", "UNKNOWN") if isinstance(err, dict) else str(err)
-            msg  = err.get("message", "") if isinstance(err, dict) else ""
-            raise HarnessError(path, resp.status_code, code, msg)
+        # Lambda zarfı: { success: bool, data | error }
+        if isinstance(body, dict) and "success" in body:
+            if not body.get("success"):
+                err  = body.get("error", {})
+                code = err.get("code", "UNKNOWN") if isinstance(err, dict) else str(err)
+                msg  = err.get("message", "") if isinstance(err, dict) else ""
+                raise HarnessError(path, resp.status_code, code, msg)
+            return body["data"]
 
-        return body["data"]
+        # AWS API Gateway zarfı (authorizer reddetti → lambda hiç çağrılmadı)
+        aws_msg = body.get("message") if isinstance(body, dict) else None
+        if resp.status_code == 401:
+            raise HarnessError(
+                path, 401, "GATEWAY_UNAUTHORIZED",
+                "API Gateway authorizer reddetti — lambda'ya hiç ulaşılmadı. "
+                "Hermes deploy'da PUBLIC_ROUTES'a /test/* yollarının eklenmesi "
+                "ve authorization fonksiyonunun yeniden deploy edilmesi gerekiyor.",
+            )
+        if resp.status_code == 403:
+            raise HarnessError(path, 403, "GATEWAY_FORBIDDEN", aws_msg or resp.text)
+        if resp.status_code == 404:
+            raise HarnessError(path, 404, "GATEWAY_NOT_FOUND", aws_msg or resp.text)
+
+        raise HarnessError(
+            path, resp.status_code, "UNEXPECTED_ENVELOPE", str(body)[:200],
+        )
 
     # ── Persona ──────────────────────────────────────────────────────────────
 
@@ -154,12 +259,14 @@ class HarnessClient:
         self,
         persona_key: str,
         profile: dict,
-        reuse: bool = True,
+        reuse: bool = False,
     ) -> dict:
         """
         POST /test/personas
-        Persona'yı platform üzerinde oluşturur (yoksa) veya yeniden kullanır.
-        reuse=True → mevcut binding varsa yeniden kullanır (idempotent).
+        Persona'yı platform üzerinde oluşturur. Binding zaten varsa lambda
+        idempotent davranıp mevcut kaydı döner; yoksa yeni agent user
+        yaratır. `reuse=True` sadece eski agent-user kaydının yeniden
+        bağlanmasını ister (bizim akışta gerekli değil).
         """
         return await self._post("/personas", {
             "personaKey":     persona_key,
@@ -595,27 +702,17 @@ async def run_test(persona_id: str) -> dict:
         pkey    = persona_key(persona_id)
         profile = persona_profile(persona)
 
-        # 1. Provision
+        # 1. Provision — her zaman fresh user; binding zaten varsa lambda
+        # idempotent davranıp aynı binding'i döner.
         try:
             prov = await harness.provision_persona(pkey, profile, reuse=True)
-            harness_meta["userId"]   = prov.get("userId", "")
-            harness_meta["env"]      = prov.get("env", "")
-            harness_meta["isNewUser"]= prov.get("isNewUser", False)
+            harness_meta["userId"]    = prov.get("userId", "")
+            harness_meta["env"]       = prov.get("env", "")
+            harness_meta["isNewUser"] = prov.get("isNewUser", False)
             console.print(f"  [dim]✓ Persona provisioned: {pkey} (userId={prov.get('userId','?')[:8]}…)[/dim]")
         except HarnessError as e:
-            if e.code == "NOT_FOUND" and "reuseAgentUser" in str(e.message):
-                # İlk kez oluşturuyoruz, reuse=False ile dene
-                console.print(f"  [dim]⚠ reuse failed, creating fresh…[/dim]")
-                try:
-                    prov = await harness.provision_persona(pkey, profile, reuse=False)
-                    harness_meta["userId"]    = prov.get("userId", "")
-                    harness_meta["isNewUser"] = True
-                except HarnessError as e2:
-                    console.print(f"  [red]Provision hatası: {e2}[/red]")
-                    return _error_result(persona_id, persona, str(e2))
-            else:
-                console.print(f"  [red]Provision hatası: {e}[/red]")
-                return _error_result(persona_id, persona, str(e))
+            console.print(f"  [red]Provision hatası: {e}[/red]")
+            return _error_result(persona_id, persona, str(e))
 
         # 2. Bakiye güvence — ilk adımdan önce credit ver
         try:
