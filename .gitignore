@@ -6,3 +6,5 @@ reports/
 .venv/
 .venv_local/
 env
+.venv_local/
+env
