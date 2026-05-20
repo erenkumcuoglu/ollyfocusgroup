@@ -508,6 +508,18 @@ async def get_report(filename: str):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+@app.delete("/api/reports/{filename}")
+async def delete_report(filename: str):
+    # Güvenlik: path traversal engellemesi
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(400, "Geçersiz dosya adı")
+    path = Path(config.REPORTS_DIR) / filename
+    if not path.exists():
+        raise HTTPException(404, "Rapor bulunamadı")
+    path.unlink()
+    return {"ok": True, "deleted": filename}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SCHEDULER
 # ─────────────────────────────────────────────────────────────────────────────

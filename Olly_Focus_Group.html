@@ -1065,8 +1065,11 @@ aside {
   max-height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;          /* title + footer sabit kalır */
 }
 .report-detail-content {
+  flex: 1;                   /* kalan tüm yüksekliği kapla */
+  min-height: 0;             /* flex overflow koruması */
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1372,6 +1375,8 @@ aside {
   box-shadow: 0 24px 60px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.04);
   animation: pop .18s ease-out;
 }
+/* Rapor detay modal'ı: kendi scroll yönetimi var */
+.report-modal.modal { overflow: hidden; }
 @keyframes pop { from { transform: translateY(6px) scale(.99); opacity: 0; } }
 .modal-title {
   font-size: 18px;
