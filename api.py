@@ -51,9 +51,9 @@ async def health_check():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    html_path = Path(__file__).parent / "Olly Focus Group.html"
+    html_path = Path(__file__).parent / "Olly_Focus_Group.html"
     if not html_path.exists():
-        raise HTTPException(404, "Olly Focus Group.html bulunamadı")
+        raise HTTPException(404, "Olly_Focus_Group.html bulunamadı")
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
