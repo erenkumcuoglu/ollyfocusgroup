@@ -22,6 +22,40 @@ import config
 import runner as test_runner
 from personas import PERSONAS, GROUND_TRUTH
 
+# ─── Persona kalıcılık dosyası ────────────────────────────────────────────────
+_PERSONAS_JSON = Path(__file__).parent / "personas_data.json"
+
+
+def _load_personas_json():
+    """Uygulama başlarken personas_data.json'daki ek/güncel personaları yükle."""
+    if not _PERSONAS_JSON.exists():
+        return
+    try:
+        data = json.loads(_PERSONAS_JSON.read_text(encoding="utf-8"))
+        for pid, pdata in data.get("personas", {}).items():
+            PERSONAS[pid] = pdata
+        for pid, gt in data.get("ground_truth", {}).items():
+            GROUND_TRUTH[pid] = gt
+    except Exception as e:
+        print(f"⚠️  personas_data.json yüklenemedi: {e}")
+
+
+def _save_personas_json():
+    """Mevcut PERSONAS + GROUND_TRUTH'u personas_data.json'a yaz.
+    Vercel production'da dosya sistemi read-only olabilir; hata sessizce yutulur.
+    Yerel geliştirmede çalışır → dosyayı commit et → Vercel'e push et."""
+    try:
+        _PERSONAS_JSON.write_text(
+            json.dumps({"personas": PERSONAS, "ground_truth": GROUND_TRUTH},
+                       ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass  # serverless ortamda yazmak başarısız olabilir, kritik değil
+
+
+_load_personas_json()  # modül yüklendiğinde çalıştır (Vercel cold-start dahil)
+
 app = FastAPI(title="Olly Focus Group", version="1.0.0")
 
 app.add_middleware(
@@ -113,6 +147,7 @@ async def create_persona(data: PersonaCreate):
     }
     if data.ground_truth:
         GROUND_TRUTH[data.id] = data.ground_truth
+    _save_personas_json()
     return {"ok": True, "id": data.id}
 
 
@@ -124,6 +159,7 @@ async def update_persona(persona_id: str, data: dict = Body(...)):
     PERSONAS[persona_id].update(data)
     if gt is not None:
         GROUND_TRUTH[persona_id] = gt
+    _save_personas_json()
     return {"ok": True}
 
 
@@ -133,6 +169,7 @@ async def delete_persona(persona_id: str):
         raise HTTPException(404, f"Persona bulunamadı: {persona_id}")
     del PERSONAS[persona_id]
     GROUND_TRUTH.pop(persona_id, None)
+    _save_personas_json()
     return {"ok": True}
 
 
@@ -183,6 +220,7 @@ async def import_personas_file(file: UploadFile = File(...)):
             GROUND_TRUTH[pid] = gt
 
     tmp_path.unlink(missing_ok=True)
+    _save_personas_json()
 
     return {
         "ok":      True,
@@ -190,6 +228,20 @@ async def import_personas_file(file: UploadFile = File(...)):
         "updated": updated,
         "total":   len(PERSONAS),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PERSONAS EXPORT — personas_data.json içeriğini döndür (commit için)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/personas/export")
+async def export_personas():
+    """
+    Mevcut PERSONAS + GROUND_TRUTH'u JSON olarak döndürür.
+    Dönen JSON'ı personas_data.json olarak kaydedip commit edebilirsin →
+    Vercel'e push ettiğinde yeni personalar build'e dahil olur.
+    """
+    return {"personas": PERSONAS, "ground_truth": GROUND_TRUTH}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

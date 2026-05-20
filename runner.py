@@ -276,6 +276,9 @@ class HarnessError(Exception):
 # Paylaşılan harness instance
 harness = HarnessClient()
 
+# Per-persona aktif conversationId cache'i (api.py _run_with_stream için)
+_active_conv_ids: dict[str, str] = {}
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # HARNESS PERSONA KEY — persona dict'ten stable key türet
@@ -470,6 +473,88 @@ async def _call_olly_legacy(user_message: str, history: list, persona_id: str) -
         "intent_state":    raw.get("intent_state", "none"),
         "new_follow_up":   raw.get("new_follow_up", None),
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# CALL_OLLY — api.py / _run_with_stream tarafından çağrılır (tek adım)
+# ════════════════════════════════════════════════════════════════════════════
+
+async def call_olly(user_message: str, history: list, persona_id: str) -> dict:
+    """
+    api.py'nin _run_with_stream fonksiyonu tarafından her adımda çağrılır.
+    Tek bir kullanıcı mesajını Olly'e iletir; standart format döner:
+      { response_action, response_text, manage_memories, intent_state, ... }
+
+    Harness modunda:
+      - history boşsa (adım 1) → persona provision + start_conversation
+      - history doluysa (adım 2+) → send_message (cache'deki conversationId ile)
+
+    Legacy modunda: her adımda stateless POST yapılır.
+    Mock modunda: sahte yanıt üretilir.
+    """
+    if config.BACKEND_MODE == "mock":
+        step  = len(history) // 2 + 1
+        max_s = PERSONAS.get(persona_id, {}).get("max_steps", config.MAX_STEPS_LONG)
+        return _mock_olly_response(step, max_s)
+
+    elif config.BACKEND_MODE == "legacy":
+        return await _call_olly_legacy(user_message, history, persona_id)
+
+    else:  # harness
+        pkey    = persona_key(persona_id)
+        persona = PERSONAS.get(persona_id, {})
+
+        if not history:
+            # ── Adım 1: persona provision + konuşmayı başlat ─────────────
+            profile = persona_profile(persona) if persona else {}
+
+            try:
+                await harness.provision_persona(pkey, profile, reuse=True)
+            except HarnessError as e:
+                # İlk kez oluşturuyorsa reuse=False ile tekrar dene
+                if "NOT_FOUND" in str(e.code) or "reuseAgentUser" in str(e.message):
+                    await harness.provision_persona(pkey, profile, reuse=False)
+                else:
+                    raise
+
+            try:
+                await harness.grant_credits(pkey, amount=200, reason="focus_group_run")
+            except HarnessError:
+                pass  # kredi verilemese de devam et
+
+            conv_data = await harness.start_conversation(
+                persona_key=pkey,
+                initial_message=user_message,
+                fresh=config.HARNESS_FRESH_CONV,
+            )
+
+            if conv_data.get("error") == "BOT_RESPONSE_TIMEOUT":
+                return _timeout_response()
+
+            conv_id = conv_data.get("conversationId")
+            if conv_id:
+                _active_conv_ids[persona_id] = conv_id
+
+            return normalize_harness_bot_message(conv_data.get("botMessage") or {}, 1)
+
+        else:
+            # ── Adım 2+: mevcut konuşmaya mesaj gönder ───────────────────
+            conv_id = _active_conv_ids.get(persona_id)
+            if not conv_id:
+                raise HarnessError(
+                    "/conversations/messages", 0,
+                    "NO_CONV_ID",
+                    f"Persona '{persona_id}' için aktif conversationId bulunamadı — "
+                    "adım 1 başarısız olmuş olabilir",
+                )
+
+            step     = len(history) // 2 + 1
+            msg_data = await harness.send_message(conv_id, user_message)
+
+            if msg_data.get("error") == "BOT_RESPONSE_TIMEOUT":
+                return _timeout_response()
+
+            return normalize_harness_bot_message(msg_data.get("botMessage") or {}, step)
 
 
 # ════════════════════════════════════════════════════════════════════════════
