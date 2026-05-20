@@ -17,6 +17,7 @@ import asyncio
 import datetime
 import random
 from pathlib import Path
+from typing import Optional
 
 import httpx
 from openai import AsyncOpenAI
@@ -49,6 +50,21 @@ def _mock_olly_response(step: int, max_steps: int) -> dict:
         "manage_memories": step % 2 == 0,
         "intent_state":    random.choice(["none", "none", "new_intent", "similar_to_existing"]),
         "new_follow_up":   None,
+    }
+
+
+def _timeout_response() -> dict:
+    """
+    Bot timeout'u için gerçek bir başarısızlık yanıtı.
+    Mock kullanılmaz — boş yanıt + geçersiz action → skor düşük ve görünür olur.
+    """
+    return {
+        "response_action": "timeout",   # geçersiz action → action_score 0
+        "response_text":   "",          # boş → tone_score 2
+        "manage_memories": None,
+        "intent_state":    "none",
+        "new_follow_up":   None,
+        "_timeout":        True,
     }
 
 
@@ -128,7 +144,7 @@ class HarnessClient:
             r = await c.post(_harness_url(path), json=body, headers=_harness_headers())
             return self._parse(r, path)
 
-    async def _get(self, path: str, params: dict | None = None) -> dict:
+    async def _get(self, path: str, params: Optional[dict] = None) -> dict:
         async with httpx.AsyncClient(timeout=self._timeout) as c:
             r = await c.get(_harness_url(path), params=params, headers=_harness_headers())
             return self._parse(r, path)
@@ -194,12 +210,14 @@ class HarnessClient:
 
         Döner: { conversationId, userMessage, botMessage, latencyMs, ... }
         """
+        # Serverless infra ~30 sn'de 503 veriyor; güvenli üst sınır 25 sn.
+        timeout_ms = min(config.HARNESS_TIMEOUT_MS, 25_000)
         body: dict = {
             "personaKey":     persona_key,
             "initialMessage": initial_message,
             "fresh":          fresh,
             "waitForResponse": True,
-            "timeoutMs":      config.HARNESS_TIMEOUT_MS,
+            "timeoutMs":      timeout_ms,
             "includeDebugTimeline": True,
         }
         if config.HARNESS_BOT_ID:
@@ -220,11 +238,12 @@ class HarnessClient:
 
         Döner: { userMessage, botMessage, latencyMs, debugTimeline }
         """
+        timeout_ms = min(config.HARNESS_TIMEOUT_MS, 25_000)
         return await self._post("/conversations/messages", {
             "conversationId":      conversation_id,
             "content":             content,
             "waitForResponse":     True,
-            "timeoutMs":           config.HARNESS_TIMEOUT_MS,
+            "timeoutMs":           timeout_ms,
             "includeDebugTimeline": True,
         })
 
@@ -334,7 +353,7 @@ def normalize_harness_bot_message(bot_msg: dict, step: int) -> dict:
     Eğer text düz string ise (plain metin) → response_action="respond" varsay.
     """
     if not bot_msg:
-        return _mock_olly_response(step, 99)
+        return _timeout_response()
 
     text = bot_msg.get("text", "") or ""
 
@@ -365,7 +384,7 @@ def normalize_harness_bot_message(bot_msg: dict, step: int) -> dict:
     }
 
 
-def _try_extract_embedded_json(text: str) -> dict | None:
+def _try_extract_embedded_json(text: str) -> Optional[dict]:
     """Metin içine gömülü JSON bloğunu bul ve parse et."""
     import re
     # Olası formatlar:
@@ -457,7 +476,7 @@ async def _call_olly_legacy(user_message: str, history: list, persona_id: str) -
 # EVALUATOR — adım bazlı 0-10 skorlama
 # ════════════════════════════════════════════════════════════════════════════
 
-def evaluate_step(olly_output: dict, gt: dict | None) -> dict:
+def evaluate_step(olly_output: dict, gt: Optional[dict]) -> dict:
     actual_action = olly_output.get("response_action", "")
     actual_memory = olly_output.get("manage_memories", None)
     actual_intent = olly_output.get("intent_state",    "none")
@@ -589,7 +608,7 @@ async def run_test(persona_id: str) -> dict:
     ))
 
     # ── HARNESS MODU: persona provision + conversation start ─────────────────
-    conversation_id: str | None = None
+    conversation_id: Optional[str] = None
 
     if config.BACKEND_MODE == "harness":
         pkey    = persona_key(persona_id)
@@ -645,7 +664,7 @@ async def run_test(persona_id: str) -> dict:
             # Timeout kontrolü
             if conv_data.get("error") == "BOT_RESPONSE_TIMEOUT":
                 console.print(f"  [red]⏱ Bot yanıt vermedi (timeout) adım 1[/red]")
-                bot_response = _mock_olly_response(1, max_steps)  # fallback
+                bot_response = _timeout_response()
             else:
                 bot_response = normalize_harness_bot_message(bot_msg_data, 1)
                 latency = conv_data.get("latencyMs", 0)
@@ -695,7 +714,7 @@ async def run_test(persona_id: str) -> dict:
 
                 if msg_data.get("error") == "BOT_RESPONSE_TIMEOUT":
                     console.print(f"  [red]⏱ Bot yanıt vermedi adım {step_num}[/red]")
-                    bot_response = _mock_olly_response(step_num, max_steps)
+                    bot_response = _timeout_response()
                     latency = msg_data.get("latencyMs", 0)
                 else:
                     bot_response = normalize_harness_bot_message(
@@ -885,7 +904,7 @@ def _error_result(persona_id: str, persona: dict, error: str) -> dict:
 # FOCUS GROUP — birden çok persona
 # ════════════════════════════════════════════════════════════════════════════
 
-async def run_focus_group(persona_ids: list | None = None) -> dict:
+async def run_focus_group(persona_ids: Optional[list] = None) -> dict:
     if persona_ids is None:
         persona_ids = list(PERSONAS.keys())
 
@@ -1168,7 +1187,7 @@ async def send_notifications(report: dict):
 # YARDIMCI — çalıştır + raporla + bildir
 # ════════════════════════════════════════════════════════════════════════════
 
-async def run_and_report(persona_ids: list | None = None) -> dict:
+async def run_and_report(persona_ids: Optional[list] = None) -> dict:
     report = await run_focus_group(persona_ids)
     print_report(report)
     await send_notifications(report)
