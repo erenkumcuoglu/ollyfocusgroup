@@ -69,8 +69,8 @@ else:
 # Raporlama
 # ---------------------------------------------------------------------------
 REPORTS_DIR:       str = os.getenv("REPORTS_DIR",       "reports")
-SLACK_WEBHOOK_URL: str = os.getenv("SLACK_WEBHOOK_URL", "")
-WEBHOOK_URL:       str = os.getenv("WEBHOOK_URL",       "")
+SLACK_WEBHOOK_URL: str = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+WEBHOOK_URL:       str = os.getenv("WEBHOOK_URL",       "").strip()
 
 # ---------------------------------------------------------------------------
 # Skorlama eşikleri
