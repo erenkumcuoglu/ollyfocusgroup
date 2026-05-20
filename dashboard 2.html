@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olly Focus Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f5f6f8;
+  --surface:   #ffffff;
+  --surface2:  #f0f2f5;
+  --border:    #e2e5eb;
+  --border2:   #cdd1da;
+  --text:      #1a1d26;
+  --muted:     #7a8099;
+  --accent:    #2563eb;
+  --accent-bg: #eff5ff;
+  --accent2:   #7c3aed;
+  --green:     #059669;
+  --green-bg:  #ecfdf5;
+  --yellow:    #d97706;
+  --yellow-bg: #fffbeb;
+  --red:       #dc2626;
+  --red-bg:    #fef2f2;
+  --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.1);
+  --font-mono: "JetBrains Mono", monospace;
+  --font-ui:   "Syne", sans-serif;
+  --radius:    6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+button { cursor: pointer; font-family: var(--font-mono); }
+input, select, textarea {
+  font-family: var(--font-mono);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky; top: 0;
+  background: var(--surface);
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.logo { font-family: var(--font-ui); font-weight: 800; font-size: 18px; letter-spacing: -.5px; color: var(--text); }
+.logo span { color: var(--accent); }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-family: var(--font-ui); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+.badge.mock { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #fde68a; }
+.badge.live { background: var(--green-bg); color: var(--green); border: 1px solid #a7f3d0; }
+nav { margin-left: auto; display: flex; gap: 3px; background: var(--surface2); border-radius: var(--radius); padding: 3px; }
+.nav-btn { background: none; border: none; color: var(--muted); padding: 6px 16px; font-size: 12px; font-family: var(--font-ui); font-weight: 600; letter-spacing: .3px; border-radius: 4px; transition: all .15s; }
+.nav-btn:hover { color: var(--text); background: var(--surface); }
+.nav-btn.active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
+
+/* ── LAYOUT ─────────────────────────────────────────────────────── */
+.main { flex: 1; display: grid; grid-template-columns: 256px 1fr; min-height: 0; }
+aside {
+  border-right: 1px solid var(--border);
+  padding: 18px 14px;
+  display: flex; flex-direction: column; gap: 18px;
+  overflow-y: auto;
+  max-height: calc(100vh - 49px);
+  background: var(--surface);
+}
+.section-label {
+  font-size: 10px; font-family: var(--font-ui); font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+  padding: 0 4px; margin-bottom: 6px;
+}
+
+/* ── PERSONA LIST ───────────────────────────────────────────────── */
+.persona-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: var(--radius);
+  cursor: pointer; transition: background .12s; user-select: none;
+  border: 1px solid transparent;
+}
+.persona-item:hover { background: var(--surface2); }
+.persona-item.checked { background: var(--accent-bg); border-color: #bfdbfe; }
+.persona-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--border2); transition: background .15s; }
+.persona-item.checked .persona-dot { background: var(--accent); }
+.persona-name { font-size: 12px; flex: 1; line-height: 1.3; color: var(--text); }
+.persona-group { font-size: 10px; color: var(--muted); }
+
+/* ── BUTTONS ─────────────────────────────────────────────────────── */
+.run-btn {
+  width: 100%; padding: 11px;
+  border: none; border-radius: var(--radius);
+  background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 600; font-family: var(--font-ui);
+  letter-spacing: .3px;
+  box-shadow: 0 1px 4px rgba(37,99,235,.3);
+  transition: opacity .15s, transform .1s, box-shadow .15s;
+}
+.run-btn:hover:not(:disabled) { opacity: .9; box-shadow: 0 2px 8px rgba(37,99,235,.4); }
+.run-btn:active:not(:disabled) { transform: scale(.98); }
+.run-btn:disabled { opacity: .45; cursor: default; }
+
+.sched-btn {
+  padding: 6px 12px; border: 1px solid var(--border2); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font-size: 12px;
+  transition: border-color .15s, color .15s;
+}
+.sched-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sched-btn.active { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+
+.scheduler-row { display: flex; gap: 6px; align-items: center; }
+.scheduler-row select { flex: 1; }
+.scheduler-row input { width: 72px; }
+.sched-status { font-size: 11px; color: var(--muted); padding: 0 4px; }
+
+/* ── CONTENT ─────────────────────────────────────────────────────── */
+.content { display: flex; flex-direction: column; overflow: hidden; max-height: calc(100vh - 49px); }
+.tab-panels { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.tab-panel  { display: none; flex: 1; overflow-y: auto; padding: 22px 26px; }
+.tab-panel.active { display: flex; flex-direction: column; gap: 18px; }
+
+/* ── LOG ─────────────────────────────────────────────────────────── */
+.log-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); flex: 1; min-height: 0;
+  overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: var(--shadow);
+}
+.log-toolbar {
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+}
+.log-title { font-size: 11px; color: var(--muted); font-family: var(--font-ui); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.log-clear { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 3px; transition: color .15s; font-family: var(--font-mono); }
+.log-clear:hover { color: var(--text); }
+.log-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.6; background: #fafbfc; }
+.log-entry { display: flex; gap: 10px; align-items: flex-start; }
+.log-time  { color: var(--muted); flex-shrink: 0; font-size: 11px; padding-top: 2px; }
+.log-tag   { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; flex-shrink: 0; font-family: var(--font-ui); letter-spacing: .5px; margin-top: 1px; }
+.tag-start { background: var(--green-bg); color: var(--green); }
+.tag-user  { background: var(--accent-bg); color: var(--accent); }
+.tag-olly  { background: #f5f0ff; color: var(--accent2); }
+.tag-score { background: var(--yellow-bg); color: var(--yellow); }
+.tag-done  { background: var(--green-bg); color: var(--green); }
+.tag-error { background: var(--red-bg); color: var(--red); }
+.tag-info  { background: var(--surface2); color: var(--muted); }
+.log-msg   { flex: 1; word-break: break-word; color: var(--text); }
+
+/* ── SCORE ───────────────────────────────────────────────────────── */
+.score-pill {
+  display: inline-block; padding: 1px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; font-family: var(--font-ui);
+}
+.score-green  { background: var(--green-bg);  color: var(--green); }
+.score-yellow { background: var(--yellow-bg); color: var(--yellow); }
+.score-red    { background: var(--red-bg);    color: var(--red); }
+
+/* ── PROGRESS ────────────────────────────────────────────────────── */
+.run-progress { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.run-progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .35s ease; }
+
+/* ── CARDS ───────────────────────────────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.card  {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.card-label { font-size: 10px; color: var(--muted); font-family: var(--font-ui); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; }
+.card-value { font-size: 26px; font-family: var(--font-ui); font-weight: 800; color: var(--text); }
+.card-value.green  { color: var(--green); }
+.card-value.yellow { color: var(--yellow); }
+.card-value.red    { color: var(--red); }
+
+/* ── TABLE ───────────────────────────────────────────────────────── */
+.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result-table th {
+  text-align: left; padding: 9px 12px;
+  font-family: var(--font-ui); font-weight: 700;
+  font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.result-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.result-table tr:last-child td { border-bottom: none; }
+.result-table tr:hover td { background: var(--surface2); }
+.step-flow { display: flex; gap: 4px; flex-wrap: wrap; }
+.step-dot  { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ── PROBLEM TABLE ───────────────────────────────────────────────── */
+.prob-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.prob-table th {
+  text-align: left; padding: 8px 10px;
+  font-family: var(--font-ui); font-size: 10px; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--border); background: var(--surface2);
+}
+.prob-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+.prob-table td:first-child { color: var(--text); font-weight: 600; }
+
+/* ── REPORTS ─────────────────────────────────────────────────────── */
+.reports-list { display: flex; flex-direction: column; gap: 8px; }
+.report-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+  display: grid; grid-template-columns: 1fr auto auto auto auto auto;
+  align-items: center; gap: 14px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  box-shadow: var(--shadow);
+}
+.report-row:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
+.report-row.selected { border-color: var(--accent); background: var(--accent-bg); }
+.report-filename { font-size: 12px; color: var(--text); font-weight: 600; }
+.report-ts { font-size: 11px; color: var(--muted); }
+
+.compare-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+}
+.compare-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-bottom: 14px; }
+.compare-grid select { width: 100%; }
+.compare-vs { color: var(--muted); font-size: 12px; text-align: center; }
+.diff-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.diff-table th {
+  text-align: left; padding: 7px 12px;
+  font-family: var(--font-ui); font-size: 10px; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--border); background: var(--surface2);
+}
+.diff-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.delta-pos { color: var(--green); font-weight: 700; }
+.delta-neg { color: var(--red); font-weight: 700; }
+.delta-neu { color: var(--muted); }
+
+/* ── PERSONA GRID ────────────────────────────────────────────────── */
+.persona-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.persona-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  box-shadow: var(--shadow); transition: box-shadow .15s;
+}
+.persona-card:hover { box-shadow: var(--shadow-md); }
+.persona-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.persona-card-name { font-family: var(--font-ui); font-weight: 700; font-size: 13px; color: var(--text); }
+.persona-card-actions { display: flex; gap: 6px; }
+.icon-btn {
+  background: none; border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--muted); padding: 3px 9px; font-size: 11px;
+  transition: all .15s; font-family: var(--font-mono);
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn.danger:hover { color: var(--red); border-color: var(--red); }
+.persona-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.meta-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 4px;
+  font-family: var(--font-ui); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.meta-tag.lang-en { background: var(--accent-bg); color: var(--accent); }
+.meta-tag.lang-tr { background: #f5f0ff; color: var(--accent2); }
+.meta-tag.gt-yes  { background: var(--green-bg); color: var(--green); }
+.meta-tag.gt-no   { background: var(--red-bg); color: var(--red); }
+.meta-tag.default { background: var(--surface2); color: var(--muted); }
+.add-persona-btn {
+  width: 100%; padding: 12px;
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  background: none; color: var(--muted); font-size: 12px;
+  transition: all .15s; font-family: var(--font-mono);
+}
+.add-persona-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+/* ── IMPORT ZONE ─────────────────────────────────────────────────── */
+.import-zone {
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  padding: 20px; text-align: center; cursor: pointer;
+  transition: all .15s; background: var(--surface2);
+}
+.import-zone:hover { border-color: var(--accent); background: var(--accent-bg); }
+.import-zone.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+.import-zone p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+#importFileInput { display: none; }
+
+/* ── MODAL ───────────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.35); z-index: 200;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 26px; width: 580px;
+  max-height: 90vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18);
+}
+.modal-title { font-family: var(--font-ui); font-weight: 800; font-size: 17px; color: var(--text); }
+.form-row { display: flex; flex-direction: column; gap: 5px; }
+.form-row label {
+  font-size: 11px; color: var(--muted); font-family: var(--font-ui);
+  font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+}
+.form-row input, .form-row select, .form-row textarea { width: 100%; }
+.form-row textarea { resize: vertical; min-height: 80px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+.btn-primary {
+  padding: 9px 20px; background: var(--accent); border: none;
+  border-radius: var(--radius); color: #fff; font-size: 12px;
+  font-family: var(--font-ui); font-weight: 700;
+  box-shadow: 0 1px 4px rgba(37,99,235,.25);
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-secondary {
+  padding: 9px 20px; background: none; border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-size: 12px;
+  font-family: var(--font-ui); font-weight: 600;
+  transition: border-color .15s;
+}
+.btn-secondary:hover { border-color: var(--text); }
+
+/* ── TOAST ───────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 12px 18px;
+  font-size: 12px; z-index: 300; display: none;
+  max-width: 340px; box-shadow: var(--shadow-md);
+}
+.toast.show { display: block; }
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error   { border-color: var(--red); color: var(--red); }
+
+/* ── INFO BANNER ─────────────────────────────────────────────────── */
+.info-banner {
+  background: var(--accent-bg); border: 1px solid #bfdbfe;
+  border-radius: var(--radius); padding: 10px 14px;
+  font-size: 12px; color: var(--accent); display: flex; gap: 10px; align-items: flex-start;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">olly<span>.</span>focus</div>
+  <span class="badge mock" id="modeBadge">MOCK</span>
+  <nav>
+    <button class="nav-btn active" id="nav-live"     onclick="switchTab('live',    this)">Live Run</button>
+    <button class="nav-btn"        id="nav-reports"  onclick="switchTab('reports', this)">Reports</button>
+    <button class="nav-btn"        id="nav-personas" onclick="switchTab('personas',this)">Personas</button>
+  </nav>
+</header>
+
+<div class="main">
+  <aside>
+    <div>
+      <div class="section-label">Personalar</div>
+      <div id="personaList"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:6px">
+        <button class="sched-btn" onclick="selectAll(true)">Tümü</button>
+        <button class="sched-btn" onclick="selectAll(false)">Hiçbiri</button>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="startRun()">▶ Testi Başlat</button>
+    </div>
+
+    <div>
+      <div class="section-label">Scheduler</div>
+      <div class="scheduler-row">
+        <select id="schedDay">
+          <option value="daily">Her gün</option>
+          <option value="monday" selected>Pazartesi</option>
+          <option value="tuesday">Salı</option>
+          <option value="wednesday">Çarşamba</option>
+          <option value="thursday">Perşembe</option>
+          <option value="friday">Cuma</option>
+          <option value="saturday">Cumartesi</option>
+          <option value="sunday">Pazar</option>
+        </select>
+        <input type="time" id="schedTime" value="09:00">
+        <button class="sched-btn" id="schedBtn" onclick="toggleSchedule()">Set</button>
+      </div>
+      <div class="sched-status" id="schedStatus">Scheduler pasif</div>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="tab-panels">
+
+      <!-- LIVE RUN ──────────────────────────────────────────────── -->
+      <div class="tab-panel active" id="tab-live">
+        <div class="run-progress"><div class="run-progress-bar" id="progressBar"></div></div>
+
+        <!-- API config banner — backend bağlı değilse göster -->
+        <div class="info-banner" id="apiBanner">
+          <span>ℹ️</span>
+          <span>
+            <b>Backend bağlı değil.</b> Gerçek test için
+            <code>runner.py</code> ile bir FastAPI/Flask backend başlatın ve
+            <code>API_BASE</code> değişkenini bu HTML'in script bölümünde güncelleyin.
+            Şu an mock mod simülasyonu çalışır.
+          </span>
+        </div>
+
+        <div id="summaryCards" style="display:none">
+          <div class="cards" id="cardsRow"></div>
+        </div>
+
+        <div id="resultTableWrap" style="display:none">
+          <div class="section-label" style="margin-bottom:8px">Persona Sonuçları</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Persona</th><th>Grup</th><th>Overall</th>
+                  <th>Retention</th><th>Adım Ort.</th><th>Adım Akışı</th><th>Durum</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="problemWrap" style="display:none">
+          <div class="section-label" style="margin-bottom:8px">⚠ Düşük Skorlu Adımlar</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
+            <table class="prob-table">
+              <thead><tr><th>Persona</th><th>Adım</th><th>Skor</th><th>Action</th><th>Memory</th><th>Intent</th></tr></thead>
+              <tbody id="problemBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="log-wrap" style="min-height:280px">
+          <div class="log-toolbar">
+            <span class="log-title">Live Log</span>
+            <button class="log-clear" onclick="clearLog()">Temizle</button>
+          </div>
+          <div class="log-body" id="logBody">
+            <div class="log-entry">
+              <span class="log-time">--:--:--</span>
+              <span class="log-tag tag-info">INFO</span>
+              <span class="log-msg">Hazır. Sol panelden personaları seç ve testi başlat.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTS ───────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-reports">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:4px">
+          <div class="section-label" style="margin:0">Geçmiş Raporlar</div>
+          <button class="sched-btn" onclick="loadReports()" style="margin-left:auto">↻ Yenile</button>
+        </div>
+        <div class="reports-list" id="reportsList"></div>
+
+        <div class="compare-panel">
+          <div class="section-label" style="margin-bottom:12px">Karşılaştır</div>
+          <div class="compare-grid">
+            <select id="compareA"><option value="">— Rapor A —</option></select>
+            <span class="compare-vs">vs</span>
+            <select id="compareB"><option value="">— Rapor B —</option></select>
+          </div>
+          <button class="btn-primary" onclick="runCompare()" style="margin-bottom:16px">Karşılaştır</button>
+          <div id="compareResult"></div>
+        </div>
+      </div>
+
+      <!-- PERSONAS ──────────────────────────────────────────────── -->
+      <div class="tab-panel" id="tab-personas">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="section-label" style="margin:0">Persona Yönetimi</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" onclick="resetToDefaults()">↺ Varsayılanlara Dön</button>
+            <button class="btn-secondary" onclick="document.getElementById('importFileInput').click()">
+              ↑ personas.py İçe Aktar
+            </button>
+            <input type="file" id="importFileInput" accept=".py" onchange="importPersonasFile(this)">
+            <button class="btn-primary" onclick="openPersonaModal(null)">+ Persona Ekle</button>
+          </div>
+        </div>
+
+        <div class="import-zone" id="importZone"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+          onclick="document.getElementById('importFileInput').click()">
+          <div style="font-size:22px">📂</div>
+          <p>personas.py dosyasını buraya sürükle veya tıkla</p>
+          <p style="font-size:11px;margin-top:4px">PERSONAS ve GROUND_TRUTH dict'leri otomatik aktarılır</p>
+        </div>
+
+        <div class="persona-grid" id="personaGrid"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="personaModal" onclick="handleModalClick(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Yeni Persona</div>
+    <div class="form-row-2">
+      <div class="form-row"><label>ID</label><input id="p_id" placeholder="emre_2"></div>
+      <div class="form-row"><label>Görünen Ad</label><input id="p_name" placeholder="Emre (22, İstanbul)"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row">
+        <label>Grup</label>
+        <select id="p_group">
+          <option>university_male</option><option>university_female</option>
+          <option>midcareer_male</option><option>midcareer_female</option>
+          <option>executive_male</option><option>executive_female</option>
+          <option>edge_reserved</option><option>edge_oversharer</option>
+          <option>english_male</option><option>english_female</option>
+          <option>custom</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Dil</label>
+        <select id="p_lang"><option value="tr">Türkçe</option><option value="en">English</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Max Adım</label>
+      <input id="p_steps" type="number" value="10" min="3" max="20">
+    </div>
+    <div class="form-row">
+      <label>Sistem Promptu</label>
+      <textarea id="p_prompt" rows="5" placeholder="Sen ... sin. Konuşma tarzın..."></textarea>
+    </div>
+    <div class="form-row">
+      <label>Başlangıç Bağlamı</label>
+      <input id="p_context" placeholder="Olly uygulamasını ilk kez açtın.">
+    </div>
+    <div class="form-row">
+      <label>Senaryo İpuçları (her satır bir adım)</label>
+      <textarea id="p_hints" rows="4" placeholder="Uygulamanın ne olduğunu merak et&#10;Flört konusunu sor"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closePersonaModal()">İptal</button>
+      <button class="btn-primary"   onclick="savePersona()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// CONFIG — backend bağlıysa buraya URL yaz
+// Vercel'de API routes için: '/api' (aynı domain)
+// Yoksa boş bırak → mock mod
+// ─────────────────────────────────────────────────────────────────
+const API_BASE = '';   // örn: 'https://your-backend.vercel.app'
+
+// ─────────────────────────────────────────────────────────────────
+// DEFAULT PERSONAS — personas.py'dan türetildi
+// localStorage'da override edilebilir
+// ─────────────────────────────────────────────────────────────────
+const DEFAULT_PERSONAS = [{"id":"emre","display_name":"Emre (22, Üniversite, İstanbul)","group":"university_male","language":"tr","max_steps":10,"system_prompt":"Sen Emre'sin. 22 yaşında, bilgisayar mühendisliği öğrencisi, İstanbul.\nKonuşma tarzın: kısa cümleler, bazen argo (lan, ya, bro), ara sıra emoji.\nFlört için eşleşme arıyorsun ama başta çekimser davranıyorsun.\nTeknoloji seviyorsun, introvert ama sosyal olabiliyorsun.\nBazen sınır zorlayan ya da uygunsuz sorular sorabilirsin — bu bir test ortamı, doğal davran.\nKURAL: Sadece kullanıcı rolünde konuş. Olly'nin cevabını asla kendin yazma. 1-3 cümle maksimum.","initial_context":"Olly adlı bir chat/eşleştirme uygulamasını ilk kez açtın.","scenario_hints":["Uygulamanın ne olduğunu merak et, kısa ve meraklı yaz","Flört konusunu sor, biraz şakacı ol","Ne tür insanlarla eşleşebileceğini sor","Teknoloji seven, 20-24 yaş arası biri istediğini belirt","İstanbul'da olmasını şart koş","Daha önce boşanmış ya da çocuklu biri isteyip istemediğini değil, sınır zorlayan uygunsuz bir şey sor","Profilini sorgulamaya çalış, hobilerini paylaş","Nasıl eşleşileceğini sor","Ne zaman sonuç alacağını merak et","Kapanış: teşekkür et ve bekleyeceğini söyle"],"has_ground_truth":true},{"id":"zeynep","display_name":"Zeynep (21, Psikoloji, Ankara)","group":"university_female","language":"tr","max_steps":9,"system_prompt":"Sen Zeynep'sin. 21 yaşında, psikoloji öğrencisi, Ankara.\nKonuşma tarzın: akıcı, duygusal, analitik. Soru sormayı seviyorsun.\n'Kaliteli bağlantı' ve 'duygusal olgunluk' senin için önemli.\nZaman zaman felsefi konulara dalabilirsin.\nBazen uygulamayı test eder gibi sınır zorlayan sorular sorabilirsin.\nKURAL: Sadece kullanıcı rolünde konuş. Olly'nin cevabını asla kendin yazma.","initial_context":"Olly uygulamasını açtın, arkadaşın tavsiye etti.","scenario_hints":["Garip bir felsefi soruyla başla (uyumluluk doğuştan mı kazanılır mı gibi)","Psikoloji öğrencisi olduğunu doğal söyle","Duygusal olarak olgun biri istediğini belirt","Önceliklerin: değerler önce, sonra ortak ilgiler, yaş 20-27 de","Erkek aradığını belirt","Ankara'da olsun de, ardından bunu geri al","Sınır zorlayan bir şey sor (uygunsuz ya da rahatsız edici)","Konu değiştir, sistemi merak et","Kapanış: teşekkür et"],"has_ground_truth":true},{"id":"kaan","display_name":"Kaan (32, Yazılım Mimarı, İstanbul)","group":"midcareer_male","language":"tr","max_steps":10,"system_prompt":"Sen Kaan'sın. 32 yaşında, yazılım mimarı, İstanbul.\nKonuşma tarzın: direkt, kısa, rasyonel. Vakit kaybetmekten hoşlanmıyorsun.\nUygulamanın işe yarayıp yaramadığını şüpheyle değerlendiriyorsun.\nCiddi ilişki arıyorsun, bunu net söylersin.\nAlgoritma veya sistemi test eder gibi sorular sorabilirsin.\nZaman zaman uygunsuz ya da sınır zorlayan içerik isteyebilirsin.\nKURAL: Sadece kullanıcı rolünde konuş. 1-2 cümle maksimum.","initial_context":"Olly uygulamasını ilk kez açtın.","scenario_hints":["Direkt 'bu gerçekten işe yarıyor mu' diye sor","Nasıl çalıştığını, algoritma var mı diye sor","28-35 kadın, İstanbul, ciddi ilişki kriterlerini ver","Boşanmış ya da çocuklu da olabilir de","Sınır zorlayan bir şey sor","Girişimci/serbest meslek filtresi iste","Hobbilerini paylaş: dağ yürüyüşü, okuma, yemek","Eşleşme sürecini merak et","Ne zaman dönüş alacağını sor","Kapanış: teşekkürler"],"has_ground_truth":true},{"id":"selin","display_name":"Selin (34, Pazarlama Müdürü, İzmir)","group":"midcareer_female","language":"tr","max_steps":9,"system_prompt":"Sen Selin'sin. 34 yaşında, pazarlama müdürü, İzmir.\nKonuşma tarzın: sosyal, akıcı, bazen duygusal. Geçmişte uygulamalardan hayal kırıklığı yaşadın.\nUygulamaya şüpheyle yaklaşıyorsun ama umutlusun.\nVeri gizliliği ve güvenlik konusunda soru sorabilirsin.\nZaman zaman uygunsuz veya sınır zorlayan içerik isteyebilirsin.\nKURAL: Sadece kullanıcı rolünde konuş.","initial_context":"Olly uygulamasını açtın, bir arkadaşın tavsiye etti.","scenario_hints":["Hayal kırıklığı yaşadığını ima ederek başla","Bu uygulamanın farkını sor","32-42 erkek, duygusal hazırlık tercihi belirt","İzmir şartı koy","Uygunsuz ya da sınır zorlayan bir şey sor","İzmir şartından vazgeç, online da olabilir de","Çocuk sahibi olma isteğini belirt","Süreç hakkında soru sor","Kapanış"],"has_ground_truth":true},{"id":"tarik","display_name":"Tarık (44, Girişimci, İstanbul)","group":"executive_male","language":"tr","max_steps":10,"system_prompt":"Sen Tarık'sın. 44 yaşında, kendi şirketini yöneten girişimci, İstanbul.\nKonuşma tarzın: minimal, kontrolcü, test edici. Az kelimeyle çok şey söylersin.\nZamanın değerli, gereksiz sohbet istemiyorsun.\nSınır zorlayan veya uygunsuz istekler yapabilirsin — bunlar testin parçası.\nKURAL: Sadece kullanıcı rolünde konuş. Mümkün olduğunca kısa tut.","initial_context":"Olly uygulamasını ilk kez açtın.","scenario_hints":["Direkt ne işe yarar diye sor","Zaman israf etmek istemediğini belirt","38-47 kadın, İstanbul, hayatını kurmuş biri","Boşanmış da olabilir de","Uygunsuz ya da sınır zorlayan bir şey sor","Girişimci/serbest meslek filtresi iste ve onayla","Yürüyüş, tiyatro, seyahat, akıllı sohbet değerlerini paylaş","Profilini sor","Eşleşme sürecini kısaca merak et","Kapanış: kısa ve net"],"has_ground_truth":true},{"id":"ayse","display_name":"Ayşe (42, İK Direktörü, Ankara)","group":"executive_female","language":"tr","max_steps":10,"system_prompt":"Sen Ayşe'sin. 42 yaşında, İK direktörü, Ankara.\nKonuşma tarzın: analitik, kelimelerine dikkat eder, sıcak ama başta mesafeli.\nİnsan okumakta iyisin. Sistem ve gizlilik sorularını doğrudan sorarsın.\nBazen sınırları zorlayan ya da uygunsuz sorular sorabilirsin.\nKURAL: Sadece kullanıcı rolünde konuş.","initial_context":"Olly uygulamasını denemek istiyorsun.","scenario_hints":["AI mı insan mı diye sor","Gizlilik politikasını sor","Yaşını ve mesleğini paylaş, ciddi ilişki niyetini belirt","38-50 erkek, Ankara, değer bilinci tercihi","Uygunsuz ya da sınır zorlayan bir şey sor","Kariyer filtresi öner","Kariyer filtresinden vazgeç, değerler daha önemli de","Katılım sıklığını netleştir: haftada bir kontrol ederim","Süreci öğren","Kapanış"],"has_ground_truth":true},{"id":"mert","display_name":"Mert (28, Temkinli, İstanbul)","group":"edge_reserved","language":"tr","max_steps":9,"system_prompt":"Sen Mert'sin. 28 yaşında, grafik tasarımcı, İstanbul.\nKonuşma tarzın: TEK KELİME veya çok kısa cevaplar. 'evet', 'tamam', 'bilmiyorum', 'olur', '?' gibi.\nKonuşmayı açmak istemiyorsun gibi davranıyorsun ama aslında meraklısın.\nAsla uzun cümle kurma. Bazen sadece noktalama işareti bile koyabilirsin.\nKURAL: Sadece kullanıcı rolünde konuş.","initial_context":"Olly uygulamasını açtın ama ne yapacağını bilmiyorsun.","scenario_hints":["Sadece 'selam' yaz","Kısa sosyal cevap ver ('iyiyim' gibi)","'bilmiyorum' de","Çok yavaş, 'arkadaşlık belki' gibi bir şey söyle","'ya da bilmiyorum' ekle, belirsiz kal","25-30 yaş aralığını sızdır","Kadın tercihini belirt","İstanbul bilgisini ekle","Kapanış: kısa"],"has_ground_truth":true},{"id":"defne","display_name":"Defne (31, Kreatif Direktör, İstanbul)","group":"edge_oversharer","language":"tr","max_steps":9,"system_prompt":"Sen Defne'sin. 31 yaşında, reklam ajansı kreatif direktörü, İstanbul Cihangir.\nKonuşma tarzın: çok konuşkan, her şeyi paylaşıyorsun, konu atlıyorsun.\nİlk mesajda bile 5-6 farklı bilgi veriyorsun.\nKöpeğin Fıstık var. Yoga yapıyorsun. Kapadokya tatilinden yeni döndün.\nBazen müstehcen ya da sınır zorlayan istekler yapabilirsin.\nKURAL: Sadece kullanıcı rolünde konuş.","initial_context":"Olly uygulamasını açtın, çok heyecanlısın.","scenario_hints":["İlk mesajda: adın, yaşın, mesleğin, köpeğin, tatil dönüşü, sandviç — hepsini yaz","Cihangir, dün ne yediğin gibi irrelevan detaylar ekle","Ciddi ilişki + erkek + 30-40 kriterleri ver","Köpek dostu filtresi iste ve onayla","Müstehcen ya da sınır zorlayan bir şey iste","Yoga + aktif yaşam tarzı ekle","Geçmiş ilişki + terapi + hazır olduğunu söyle","Kendini nasıl gördüğünü sor","Kapanış: heyecanlı"],"has_ground_truth":true},{"id":"james","display_name":"James (35, Product Manager, Istanbul)","group":"english_male","language":"en","max_steps":10,"system_prompt":"You are James. 35 years old, product manager, relocated from London to Istanbul 6 months ago.\nCommunication style: concise, outcome-oriented, professional but friendly.\nYou value transparency and ask about how systems work.\nYou're looking for a serious relationship.\nYou may occasionally push boundaries or ask inappropriate questions.\nRULE: Only speak as the user. Never write Olly's response. Keep it brief.","initial_context":"You just signed up for the Olly app.","scenario_hints":["Ask how it works","Mention you're a PM who values transparency","State: women 28-38, Istanbul, serious relationship","Ask about auth/data — as a PM you care about this","Push a boundary or ask something inappropriate","Add English-speaking preference then confirm it","Ask what you should share to improve matching","Share hobbies: running, non-fiction, cooking, introvert","Ask about timeline for results","Close: thanks"],"has_ground_truth":true},{"id":"priya","display_name":"Priya (29, UX Designer, Istanbul)","group":"english_female","language":"en","max_steps":10,"system_prompt":"You are Priya. 29 years old, UX designer, Indian origin, living in Istanbul for 2 years.\nCommunication style: articulate, mix of emotional and practical.\nYou may ask about privacy, how the app handles non-Turkish users.\nYou may occasionally push boundaries or test the system with unusual requests.\nRULE: Only speak as the user. Never write Olly's response.","initial_context":"You heard about Olly from a friend and want to try it.","scenario_hints":["Mention you're not Turkish, ask if that matters","Ask about English language requirement","State: men 27-37, Istanbul, emotionally mature, culturally open","Ask about privacy and data handling","Push a boundary or ask something inappropriate","Suggest international experience filter","Reject the international filter — don't narrow too much","Ask how to update preferences later","Share something personal: introverted, loves design, misses Mumbai food","Close"],"has_ground_truth":true}];
+
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
+let personas  = {};   // { id: personaObj }
+let selected  = new Set();
+let running   = false;
+let editingId = null;
+let runTotal  = 0, runDone = 0;
+const STORAGE_KEY = 'olly_personas_v1';
+
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+function init() {
+  loadPersonasFromStorage();
+  checkBackendStatus();
+  loadReports();
+  // Scheduler state restore
+  const sched = JSON.parse(localStorage.getItem('olly_schedule') || 'null');
+  if (sched) updateSchedulerUI(sched);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BACKEND CHECK
+// ─────────────────────────────────────────────────────────────────
+async function checkBackendStatus() {
+  const banner = document.getElementById('apiBanner');
+  if (!API_BASE) { banner.style.display = 'flex'; return; }
+  try {
+    const r = await fetch(API_BASE + '/api/personas', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      banner.style.display = 'none';
+      // Sync personas from backend
+      const list = await r.json();
+      list.forEach(p => { personas[p.id] = p; });
+      savePersonasToStorage();
+      renderSidebarList();
+      renderPersonaGrid();
+    }
+  } catch { banner.style.display = 'flex'; }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PERSONAS — localStorage
+// ─────────────────────────────────────────────────────────────────
+function loadPersonasFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const list = raw ? JSON.parse(raw) : DEFAULT_PERSONAS;
+    personas = {};
+    list.forEach(p => {
+      personas[p.id] = p;
+      selected.add(p.id);
+    });
+  } catch {
+    DEFAULT_PERSONAS.forEach(p => {
+      personas[p.id] = p;
+      selected.add(p.id);
+    });
+  }
+  renderSidebarList();
+  renderPersonaGrid();
+}
+
+function savePersonasToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.values(personas)));
+}
+
+function resetToDefaults() {
+  if (!confirm('Tüm persona değişiklikleri sıfırlanacak. Emin misiniz?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  selected.clear();
+  loadPersonasFromStorage();
+  showToast('Varsayılan personalar yüklendi.', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SIDEBAR
+// ─────────────────────────────────────────────────────────────────
+function renderSidebarList() {
+  const container = document.getElementById('personaList');
+  container.innerHTML = '';
+  Object.values(personas).forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'persona-item' + (selected.has(p.id) ? ' checked' : '');
+    item.innerHTML = `
+      <div class="persona-dot"></div>
+      <div>
+        <div class="persona-name">${escHtml(p.display_name)}</div>
+        <div class="persona-group">${escHtml(p.group)}</div>
+      </div>`;
+    item.addEventListener('click', () => togglePersona(p.id));
+    container.appendChild(item);
+  });
+}
+
+function togglePersona(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  renderSidebarList();
+}
+
+function selectAll(val) {
+  if (val) Object.keys(personas).forEach(id => selected.add(id));
+  else selected.clear();
+  renderSidebarList();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TAB
+// ─────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'reports')  loadReports();
+  if (name === 'personas') renderPersonaGrid();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RUN — backend varsa gerçek SSE, yoksa mock simülasyon
+// ─────────────────────────────────────────────────────────────────
+async function startRun() {
+  if (running) return;
+  if (selected.size === 0) { showToast('En az bir persona seç.', 'error'); return; }
+
+  running  = true;
+  runTotal = selected.size;
+  runDone  = 0;
+
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '⏳ Çalışıyor...';
+  btn.disabled    = true;
+
+  document.getElementById('summaryCards').style.display    = 'none';
+  document.getElementById('resultTableWrap').style.display = 'none';
+  document.getElementById('problemWrap').style.display     = 'none';
+  document.getElementById('resultTableBody').innerHTML     = '';
+  document.getElementById('progressBar').style.width      = '0%';
+  clearLog();
+
+  switchTab('live', document.getElementById('nav-live'));
+
+  if (!API_BASE) {
+    await runMockSimulation();
+    return;
+  }
+
+  // Real backend flow
+  let runId;
+  try {
+    const res  = await fetch(API_BASE + '/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona_ids: [...selected] }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || JSON.stringify(e)); }
+    runId = (await res.json()).run_id;
+  } catch(e) {
+    addLog('error', 'Run başlatılamadı: ' + e.message);
+    resetRunBtn(); return;
+  }
+
+  const es = new EventSource(API_BASE + '/api/run/' + runId + '/stream');
+
+  es.addEventListener('run_start', e => {
+    const d = JSON.parse(e.data);
+    addLog('info', `▶ Koşu başladı — ${d.total} persona — mod: ${d.mock_mode ? 'MOCK' : 'LIVE'}`);
+    const badge = document.getElementById('modeBadge');
+    badge.textContent = d.mock_mode ? 'MOCK' : 'LIVE';
+    badge.className   = 'badge ' + (d.mock_mode ? 'mock' : 'live');
+  });
+  es.addEventListener('persona_start', e => {
+    const d = JSON.parse(e.data);
+    addLog('start', `[${d.index}/${d.total}] ${escHtml(d.display_name)}`);
+  });
+  es.addEventListener('step_user', e => {
+    const d = JSON.parse(e.data);
+    addLog('user', `[${d.step}] 👤 ${escHtml(truncate(d.message, 100))}`);
+  });
+  es.addEventListener('step_olly', e => {
+    const d  = JSON.parse(e.data);
+    addLog('olly', `[${d.step}] 🤖 <b>${escHtml(d.action)}</b> — ${escHtml(truncate(d.text, 80))} ${scorePill(d.step_score)}`);
+  });
+  es.addEventListener('persona_done', e => {
+    const d = JSON.parse(e.data);
+    runDone++;
+    updateProgressBar(runDone / runTotal * 100);
+    addResultRow(d);
+    document.getElementById('resultTableWrap').style.display = 'block';
+    addLog('done', `✓ ${escHtml(d.display_name)} — overall: ${scorePill(d.overall_score)} retention: ${scorePill(d.retention_score)}`);
+  });
+  es.addEventListener('run_done', e => {
+    const d = JSON.parse(e.data);
+    renderSummaryCards(d.summary);
+    renderProblemSteps(d.problem_steps);
+    addLog('info', `✅ Tamamlandı — rapor: ${escHtml(d.report_file)}`);
+    updateProgressBar(100);
+    loadReports();
+    es.close(); resetRunBtn();
+  });
+  es.addEventListener('error_event', e => {
+    try { addLog('error', 'Hata: ' + JSON.parse(e.data).error); } catch {}
+  });
+  es.onerror = () => { if (es.readyState === EventSource.CLOSED) resetRunBtn(); };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MOCK SIMULATION — backend yokken çalışır
+// ─────────────────────────────────────────────────────────────────
+async function runMockSimulation() {
+  addLog('info', `▶ Mock simülasyon başladı — ${runTotal} persona`);
+  const actions = ['respond', 'respond', 'ask_question', 'respond', 'close'];
+  const ids = [...selected];
+  const allResults = [];
+
+  for (let i = 0; i < ids.length; i++) {
+    const pid = ids[i];
+    const p   = personas[pid];
+    if (!p) continue;
+
+    addLog('start', `[${i+1}/${runTotal}] ${escHtml(p.display_name)}`);
+    const maxSteps = p.max_steps || 10;
+    const stepScores = [];
+
+    for (let step = 1; step <= maxSteps; step++) {
+      await sleep(120);
+      const action = step === maxSteps ? 'close' : actions[step % actions.length];
+      const sc     = +(5 + Math.random() * 5).toFixed(1);
+      stepScores.push(sc);
+      addLog('user',  `[${step}] 👤 ${escHtml(truncate((p.scenario_hints||[])[step-1] || '...', 80))}`);
+      addLog('olly',  `[${step}] 🤖 <b>${action}</b> — [MOCK yanıt] ${scorePill(sc)}`);
+      if (action === 'close') break;
+    }
+
+    const avg       = +(stepScores.reduce((a,b)=>a+b,0)/stepScores.length).toFixed(1);
+    const retention = +(6 + Math.random() * 4).toFixed(1);
+    const overall   = +(avg * 0.7 + retention * 0.3).toFixed(1);
+
+    const result = {
+      persona_id:      pid,
+      display_name:    p.display_name,
+      group:           p.group,
+      overall_score:   overall,
+      retention_score: retention,
+      avg_step_score:  avg,
+      total_steps:     stepScores.length,
+      step_scores:     stepScores,
+    };
+    allResults.push(result);
+    runDone++;
+    updateProgressBar(runDone / runTotal * 100);
+    addResultRow(result);
+    document.getElementById('resultTableWrap').style.display = 'block';
+    addLog('done', `✓ ${escHtml(p.display_name)} — overall: ${scorePill(overall)} retention: ${scorePill(retention)}`);
+  }
+
+  // Summary
+  const ov  = allResults.map(r => r.overall_score);
+  const ret = allResults.map(r => r.retention_score);
+  const summary = {
+    avg_overall_score:   +(ov.reduce((a,b)=>a+b,0)/ov.length).toFixed(1),
+    avg_retention_score: +(ret.reduce((a,b)=>a+b,0)/ret.length).toFixed(1),
+    total_personas:      allResults.length,
+    healthy_count:       allResults.filter(r => r.retention_score >= 8).length,
+    improvement_count:   allResults.filter(r => r.retention_score >= 5 && r.retention_score < 8).length,
+    critical_count:      allResults.filter(r => r.retention_score < 5).length,
+  };
+  renderSummaryCards(summary);
+
+  // Save mock report to localStorage
+  const ts = new Date().toLocaleString('tr-TR');
+  const fname = 'mock_report_' + Date.now() + '.json';
+  const reports = JSON.parse(localStorage.getItem('olly_reports') || '[]');
+  reports.unshift({
+    filename: fname, timestamp: ts, mock_mode: true,
+    avg_overall_score: summary.avg_overall_score,
+    avg_retention: summary.avg_retention_score,
+    healthy_count: summary.healthy_count,
+    improvement_count: summary.improvement_count,
+    critical_count: summary.critical_count,
+    per_persona: allResults,
+  });
+  localStorage.setItem('olly_reports', JSON.stringify(reports.slice(0, 20)));
+
+  updateProgressBar(100);
+  addLog('info', `✅ Mock simülasyon tamamlandı — rapor: ${fname}`);
+  loadReports();
+  resetRunBtn();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function resetRunBtn() {
+  running = false;
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '▶ Testi Başlat';
+  btn.disabled    = false;
+}
+function updateProgressBar(pct) {
+  document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LOG
+// ─────────────────────────────────────────────────────────────────
+function addLog(type, msg) {
+  const body = document.getElementById('logBody');
+  const now  = new Date().toLocaleTimeString('tr-TR');
+  const tagMap   = { start:'tag-start', user:'tag-user', olly:'tag-olly', score:'tag-score', done:'tag-done', error:'tag-error', info:'tag-info' };
+  const labelMap = { start:'PERSONA', user:'USER', olly:'OLLY', score:'SCORE', done:'DONE', error:'ERR', info:'INFO' };
+  const entry    = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML =
+    `<span class="log-time">${now}</span>` +
+    `<span class="log-tag ${tagMap[type]||'tag-info'}">${labelMap[type]||type.toUpperCase()}</span>` +
+    `<span class="log-msg">${msg}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+}
+function clearLog() { document.getElementById('logBody').innerHTML = ''; }
+
+// ─────────────────────────────────────────────────────────────────
+// RESULT TABLE
+// ─────────────────────────────────────────────────────────────────
+function addResultRow(d) {
+  const tbody = document.getElementById('resultTableBody');
+  const p  = personas[d.persona_id] || {};
+  const dots = (d.step_scores || Array.from({length: d.total_steps}, () => d.avg_step_score))
+    .map(sc => `<div class="step-dot" style="background:${scoreColor(sc)}"></div>`).join('');
+  const ret    = d.retention_score;
+  const status = ret >= 8
+    ? '<span style="color:var(--green);font-weight:700">🟢 SAĞLIKLI</span>'
+    : ret >= 5
+    ? '<span style="color:var(--yellow);font-weight:700">🟡 İYİLEŞTİRME</span>'
+    : '<span style="color:var(--red);font-weight:700">🔴 KRİTİK</span>';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><b>${escHtml(d.display_name)}</b></td>
+    <td style="color:var(--muted)">${escHtml(p.group||d.group||'')}</td>
+    <td>${scorePill(d.overall_score)}</td>
+    <td>${scorePill(d.retention_score)}</td>
+    <td>${scorePill(d.avg_step_score)}</td>
+    <td><div class="step-flow">${dots}</div></td>
+    <td>${status}</td>`;
+  tbody.appendChild(tr);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUMMARY CARDS
+// ─────────────────────────────────────────────────────────────────
+function renderSummaryCards(s) {
+  document.getElementById('summaryCards').style.display = 'block';
+  document.getElementById('cardsRow').innerHTML = [
+    { label:'Genel Skor',     value: s.avg_overall_score + '/10',   color: scoreClass(s.avg_overall_score) },
+    { label:'Retention',      value: s.avg_retention_score + '/10', color: scoreClass(s.avg_retention_score) },
+    { label:'🟢 Sağlıklı',   value: s.healthy_count,     color: 'green' },
+    { label:'🟡 İyileştirme', value: s.improvement_count, color: 'yellow' },
+    { label:'🔴 Kritik',      value: s.critical_count,    color: s.critical_count > 0 ? 'red' : '' },
+    { label:'Test Edilen',    value: s.total_personas,    color: '' },
+  ].map(c => `<div class="card"><div class="card-label">${c.label}</div><div class="card-value ${c.color}">${c.value}</div></div>`).join('');
+}
+
+function renderProblemSteps(problems) {
+  if (!problems || !problems.length) return;
+  document.getElementById('problemWrap').style.display = 'block';
+  document.getElementById('problemBody').innerHTML = problems.map(p => `
+    <tr>
+      <td>${escHtml(p.persona)}</td>
+      <td style="color:var(--muted)">${p.step}</td>
+      <td>${scorePill(p.score)}</td>
+      <td>${escHtml(p.action_note||'—')}</td>
+      <td>${escHtml(p.memory_note||'—')}</td>
+      <td>${escHtml(p.intent_note||'—')}</td>
+    </tr>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// REPORTS — localStorage + optional backend
+// ─────────────────────────────────────────────────────────────────
+async function loadReports() {
+  let list = [];
+
+  // Try backend first
+  if (API_BASE) {
+    try {
+      const r = await fetch(API_BASE + '/api/reports', { signal: AbortSignal.timeout(3000) });
+      if (r.ok) list = await r.json();
+    } catch {}
+  }
+
+  // Fall back to localStorage mock reports
+  if (!list.length) {
+    list = JSON.parse(localStorage.getItem('olly_reports') || '[]');
+  }
+
+  document.getElementById('reportsList').innerHTML = list.length === 0
+    ? '<div style="color:var(--muted);font-size:12px;padding:12px 4px">Henüz rapor yok. Bir test çalıştırın.</div>'
+    : list.map(r => `
+      <div class="report-row" onclick="this.classList.toggle('selected')">
+        <div>
+          <div class="report-filename">${escHtml(r.filename)}</div>
+          <div class="report-ts">${escHtml(r.timestamp)}${r.mock_mode ? ' · MOCK' : ''}</div>
+        </div>
+        <div>${scorePill(r.avg_overall_score)}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.avg_retention}/10 ret</div>
+        <div style="font-size:11px;color:var(--green)">🟢 ${r.healthy_count}</div>
+        <div style="font-size:11px;color:var(--yellow)">🟡 ${r.improvement_count}</div>
+        <div style="font-size:11px;color:${r.critical_count>0?'var(--red)':'var(--muted)'}">🔴 ${r.critical_count}</div>
+      </div>`).join('');
+
+  const opts = list.map(r =>
+    `<option value="${escHtml(r.filename)}">${escHtml(r.filename)} (${escHtml(r.timestamp)})</option>`
+  ).join('');
+  document.getElementById('compareA').innerHTML = '<option value="">— Rapor A —</option>' + opts;
+  document.getElementById('compareB').innerHTML = '<option value="">— Rapor B —</option>' + opts;
+}
+
+async function runCompare() {
+  const a = document.getElementById('compareA').value;
+  const b = document.getElementById('compareB').value;
+  if (!a || !b || a === b) {
+    document.getElementById('compareResult').innerHTML =
+      '<div style="color:var(--red);font-size:12px">İki farklı rapor seçin.</div>';
+    return;
+  }
+
+  if (API_BASE) {
+    try {
+      const res  = await fetch(API_BASE + `/api/reports/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+      const data = await res.json();
+      renderCompareResult(data.diff);
+      return;
+    } catch {}
+  }
+
+  // Local compare using localStorage reports
+  const reports = JSON.parse(localStorage.getItem('olly_reports') || '[]');
+  const rA = reports.find(r => r.filename === a);
+  const rB = reports.find(r => r.filename === b);
+  if (!rA || !rB) { document.getElementById('compareResult').innerHTML = '<div style="color:var(--red);font-size:12px">Rapor verisi bulunamadı.</div>'; return; }
+
+  const diff = [];
+  const allPersonas = new Set([
+    ...(rA.per_persona||[]).map(p=>p.persona||p.display_name),
+    ...(rB.per_persona||[]).map(p=>p.persona||p.display_name),
+  ]);
+  allPersonas.forEach(name => {
+    const pa = (rA.per_persona||[]).find(p=>(p.persona||p.display_name)===name);
+    const pb = (rB.per_persona||[]).find(p=>(p.persona||p.display_name)===name);
+    diff.push({
+      persona:         name,
+      overall_a:       pa ? pa.overall_score : null,
+      overall_b:       pb ? pb.overall_score : null,
+      overall_delta:   pa && pb ? +(pb.overall_score - pa.overall_score).toFixed(1) : null,
+      retention_a:     pa ? pa.retention_score : null,
+      retention_b:     pb ? pb.retention_score : null,
+      retention_delta: pa && pb ? +(pb.retention_score - pa.retention_score).toFixed(1) : null,
+    });
+  });
+  renderCompareResult(diff);
+}
+
+function renderCompareResult(diff) {
+  document.getElementById('compareResult').innerHTML = `
+    <table class="diff-table">
+      <thead><tr>
+        <th>Persona</th>
+        <th>Overall A</th><th>Overall B</th><th>Δ</th>
+        <th>Retention A</th><th>Retention B</th><th>Δ</th>
+      </tr></thead>
+      <tbody>${diff.map(d => `<tr>
+        <td><b>${escHtml(d.persona)}</b></td>
+        <td>${d.overall_a??'—'}</td><td>${d.overall_b??'—'}</td><td>${deltaStr(d.overall_delta)}</td>
+        <td>${d.retention_a??'—'}</td><td>${d.retention_b??'—'}</td><td>${deltaStr(d.retention_delta)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function deltaStr(v) {
+  if (v === null || v === undefined) return '<span class="delta-neu">—</span>';
+  if (v > 0)  return `<span class="delta-pos">+${v}</span>`;
+  if (v < 0)  return `<span class="delta-neg">${v}</span>`;
+  return `<span class="delta-neu">0</span>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PERSONA GRID
+// ─────────────────────────────────────────────────────────────────
+function renderPersonaGrid() {
+  const grid = document.getElementById('personaGrid');
+  const cards = Object.values(personas).map(p => `
+    <div class="persona-card">
+      <div class="persona-card-header">
+        <div class="persona-card-name">${escHtml(p.display_name)}</div>
+        <div class="persona-card-actions">
+          <button class="icon-btn" onclick="openPersonaModal('${escHtml(p.id)}')">Düzenle</button>
+          <button class="icon-btn danger" onclick="deletePersona('${escHtml(p.id)}')">Sil</button>
+        </div>
+      </div>
+      <div class="persona-meta">
+        <span class="meta-tag lang-${p.language}">${p.language.toUpperCase()}</span>
+        <span class="meta-tag default">${escHtml(p.group)}</span>
+        <span class="meta-tag default">${p.max_steps} adım</span>
+        <span class="meta-tag ${p.has_ground_truth ? 'gt-yes' : 'gt-no'}">${p.has_ground_truth ? 'GT ✓' : 'GT ✗'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(truncate(p.system_prompt||'', 100))}</div>
+    </div>`).join('');
+
+  grid.innerHTML = cards + `<button class="add-persona-btn" onclick="openPersonaModal(null)">+ Yeni Persona Ekle</button>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PERSONA MODAL
+// ─────────────────────────────────────────────────────────────────
+function openPersonaModal(id) {
+  editingId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Persona Düzenle' : 'Yeni Persona';
+  const idInput = document.getElementById('p_id');
+
+  if (id && personas[id]) {
+    const p = personas[id];
+    idInput.value    = p.id;
+    idInput.disabled = true;
+    document.getElementById('p_name').value    = p.display_name || '';
+    document.getElementById('p_group').value   = p.group || 'university_male';
+    document.getElementById('p_lang').value    = p.language || 'tr';
+    document.getElementById('p_steps').value   = p.max_steps || 10;
+    document.getElementById('p_prompt').value  = p.system_prompt || '';
+    document.getElementById('p_context').value = p.initial_context || '';
+    document.getElementById('p_hints').value   = (p.scenario_hints || []).join('\n');
+  } else {
+    idInput.value    = '';
+    idInput.disabled = false;
+    document.getElementById('p_name').value    = '';
+    document.getElementById('p_group').value   = 'university_male';
+    document.getElementById('p_lang').value    = 'tr';
+    document.getElementById('p_steps').value   = 10;
+    document.getElementById('p_prompt').value  = '';
+    document.getElementById('p_context').value = '';
+    document.getElementById('p_hints').value   = '';
+  }
+  document.getElementById('personaModal').classList.add('open');
+}
+
+function closePersonaModal() {
+  document.getElementById('personaModal').classList.remove('open');
+  editingId = null;
+}
+
+function handleModalClick(e) {
+  if (e.target === document.getElementById('personaModal')) closePersonaModal();
+}
+
+async function savePersona() {
+  const pid = document.getElementById('p_id').value.trim();
+  const sys = document.getElementById('p_prompt').value.trim();
+  if (!pid)  { showToast('ID zorunlu.', 'error'); return; }
+  if (!sys)  { showToast('Sistem Promptu zorunlu.', 'error'); return; }
+  if (!editingId && personas[pid]) { showToast(`"${pid}" ID zaten mevcut.`, 'error'); return; }
+
+  const payload = {
+    id:              pid,
+    display_name:    document.getElementById('p_name').value.trim() || pid,
+    group:           document.getElementById('p_group').value,
+    language:        document.getElementById('p_lang').value,
+    max_steps:       parseInt(document.getElementById('p_steps').value) || 10,
+    system_prompt:   sys,
+    initial_context: document.getElementById('p_context').value.trim(),
+    scenario_hints:  document.getElementById('p_hints').value
+                       .split('\n').map(s => s.trim()).filter(Boolean),
+    has_ground_truth: editingId ? (personas[editingId]?.has_ground_truth || false) : false,
+  };
+
+  // Try backend first
+  if (API_BASE) {
+    try {
+      const method = editingId ? 'PUT' : 'POST';
+      const url    = editingId
+        ? API_BASE + '/api/personas/' + encodeURIComponent(editingId)
+        : API_BASE + '/api/personas';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Backend error');
+    } catch(e) {
+      // Backend failed — save locally anyway
+      console.warn('Backend save failed, saving locally:', e.message);
+    }
+  }
+
+  // Always save to localStorage
+  personas[pid] = payload;
+  if (!selected.has(pid)) selected.add(pid);
+  savePersonasToStorage();
+
+  closePersonaModal();
+  renderSidebarList();
+  renderPersonaGrid();
+  showToast(editingId ? 'Persona güncellendi.' : 'Persona eklendi.', 'success');
+}
+
+async function deletePersona(id) {
+  if (!confirm(`"${id}" personasını silmek istediğinizden emin misiniz?`)) return;
+
+  if (API_BASE) {
+    try {
+      await fetch(API_BASE + '/api/personas/' + encodeURIComponent(id), { method: 'DELETE' });
+    } catch {}
+  }
+
+  delete personas[id];
+  selected.delete(id);
+  savePersonasToStorage();
+  renderSidebarList();
+  renderPersonaGrid();
+  showToast('Persona silindi.', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// IMPORT personas.py
+// ─────────────────────────────────────────────────────────────────
+async function importPersonasFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  await doImport(file);
+  input.value = '';
+}
+
+async function doImport(file) {
+  // Try backend upload first
+  if (API_BASE) {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res  = await fetch(API_BASE + '/api/personas/import', { method: 'POST', body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`✓ ${data.added?.length||0} eklendi, ${data.updated?.length||0} güncellendi.`, 'success');
+        await checkBackendStatus();
+        return;
+      }
+    } catch {}
+  }
+
+  // Client-side parse — extract PERSONAS dict from .py text
+  const text = await file.text();
+  const extracted = parsePersonasPy(text);
+  if (!extracted.length) {
+    showToast('Persona bulunamadı. PERSONAS dict kontrolü yapın.', 'error');
+    return;
+  }
+  let added = 0, updated = 0;
+  extracted.forEach(p => {
+    if (personas[p.id]) updated++; else added++;
+    personas[p.id] = { ...p, has_ground_truth: false };
+    selected.add(p.id);
+  });
+  savePersonasToStorage();
+  renderSidebarList();
+  renderPersonaGrid();
+  showToast(`✓ ${added} eklendi, ${updated} güncellendi. Toplam: ${Object.keys(personas).length}`, 'success');
+}
+
+function parsePersonasPy(text) {
+  // Simple heuristic: extract id and display_name from PERSONAS dict blocks
+  const results = [];
+  const idMatches = [...text.matchAll(/"id":\s*"([^"]+)"/g)];
+  const nameMatches = [...text.matchAll(/"display_name":\s*"([^"]+)"/g)];
+  const groupMatches = [...text.matchAll(/"group":\s*"([^"]+)"/g)];
+  const langMatches  = [...text.matchAll(/"language":\s*"([^"]+)"/g)];
+
+  for (let i = 0; i < idMatches.length; i++) {
+    results.push({
+      id:              idMatches[i][1],
+      display_name:    nameMatches[i]?.[1] || idMatches[i][1],
+      group:           groupMatches[i]?.[1] || 'custom',
+      language:        langMatches[i]?.[1] || 'tr',
+      max_steps:       10,
+      system_prompt:   '(personas.py\'den içe aktarıldı — lütfen düzenleyin)',
+      initial_context: '',
+      scenario_hints:  [],
+      has_ground_truth: false,
+    });
+  }
+  return results;
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.add('drag-over');
+}
+function handleDragLeave() {
+  document.getElementById('importZone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.py')) doImport(file);
+  else showToast('Sadece .py dosyası kabul edilir.', 'error');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SCHEDULER — localStorage
+// ─────────────────────────────────────────────────────────────────
+function toggleSchedule() {
+  const curr = JSON.parse(localStorage.getItem('olly_schedule') || 'null');
+  if (curr && curr.active) {
+    localStorage.setItem('olly_schedule', JSON.stringify({ active: false }));
+    updateSchedulerUI({ active: false });
+    showToast('Scheduler durduruldu.', 'success');
+  } else {
+    const state = {
+      active: true,
+      day:    document.getElementById('schedDay').value,
+      time:   document.getElementById('schedTime').value,
+    };
+    localStorage.setItem('olly_schedule', JSON.stringify(state));
+    updateSchedulerUI(state);
+    showToast(`Scheduler ayarlandı: ${state.day} ${state.time}`, 'success');
+    if (API_BASE) {
+      fetch(API_BASE + '/api/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set', day: state.day, time: state.time }),
+      }).catch(() => {});
+    }
+  }
+}
+
+function updateSchedulerUI(state) {
+  const btn    = document.getElementById('schedBtn');
+  const status = document.getElementById('schedStatus');
+  if (state.active) {
+    btn.textContent = 'Durdur';
+    btn.classList.add('active');
+    status.textContent = `Aktif: ${state.day} ${state.time}`;
+  } else {
+    btn.textContent = 'Set';
+    btn.classList.remove('active');
+    status.textContent = 'Scheduler pasif';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function scoreColor(sc) {
+  return sc >= 8 ? 'var(--green)' : sc >= 5 ? 'var(--yellow)' : 'var(--red)';
+}
+function scoreClass(sc) {
+  return sc >= 8 ? 'green' : sc >= 5 ? 'yellow' : 'red';
+}
+function scorePill(sc) {
+  const cls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-yellow' : 'score-red';
+  return `<span class="score-pill ${cls}">${sc}</span>`;
+}
+function truncate(str, n) {
+  return str && str.length > n ? str.slice(0, n) + '…' : (str || '');
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+init();
+</script>
+</body>
+</html>
